@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a2340">
+<title>Classroom Dashboard</title>
+
+<!-- PERFORMANCE: preconnect ก่อนโหลด font/firebase -->
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<link rel="dns-prefetch" href="https://firebase.googleapis.com">
+
+<!-- PERFORMANCE: Firebase module preload (parallel, ไม่ waterfall) -->
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js">
+<link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js">
+
+<!-- PERFORMANCE: non-blocking font load -->
+<link rel="preload" as="style"
+  href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Kanit:wght@500;600;700&display=swap"
+  onload="this.onload=null;this.rel='stylesheet'">
+<noscript>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&family=Kanit:wght@500;600;700&display=swap">
+</noscript>
+
+<script>
+  (function(){
+    var t=localStorage.getItem('cls_theme')||'light';
+    document.documentElement.setAttribute('data-theme',t);
+  })();
+</script>
+<style>
+  :root {
+    --navy:#1a2340; --orange:#f97316; --orange-light:#fb923c; --gold:#f59e0b;
+    --blue-accent:#3b82f6; --red-accent:#ef4444; --green-accent:#22c55e; --yellow-accent:#eab308;
+    --shadow:0 4px 24px rgba(26,35,64,0.10); --shadow-lg:0 8px 40px rgba(26,35,64,0.16);
+    --text-dark:#1a2340; --text-muted:#64748b;
+    --bg:#eef2f8; --card-bg:#ffffff; --input-bg:#f8fafc; --border:#e2e8f0;
+    --item-bg:#f8fafc; --item-hover:#f1f5f9;
+  }
+  [data-theme="dark"] {
+    --bg:#0f1623; --card-bg:#1a2340; --input-bg:#0f1623; --border:#2d3a55;
+    --text-dark:#e2e8f0; --text-muted:#94a3b8;
+    --item-bg:#0f1623; --item-hover:#1e2d47;
+    --shadow:0 4px 24px rgba(0,0,0,0.3); --shadow-lg:0 8px 40px rgba(0,0,0,0.4);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  /* PERFORMANCE: จำกัด transition เฉพาะ property ที่จำเป็น แทน 'all' */
+  .card,.card-body,.modal,.profile-dropdown,.admin-card,.date-badge,.field-input,.field-select,.role-select,.todo-input,.hw-item,.exam-item,.event-item,.todo-item,.user-row,.lock-notice,.empty-state,.log-table th,.log-table td{
+    transition:background-color 0.3s,border-color 0.3s,color 0.2s;
+  }
+  nav{background:var(--navy);display:flex;align-items:center;padding:0 32px;padding-left:max(32px,env(safe-area-inset-left));padding-right:max(32px,env(safe-area-inset-right));height:64px;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,0.3);}
+  body{font-family:'Sarabun',sans-serif;background:var(--bg);min-height:100vh;color:var(--text-dark);padding-bottom:env(safe-area-inset-bottom);}
+  .nav-logo{display:flex;align-items:center;gap:10px;margin-right:32px;}
+  .nav-logo .logo-icon{width:40px;height:40px;background:var(--orange);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;transition:none;}
+  .nav-logo span{font-family:'Kanit',sans-serif;font-size:22px;font-weight:700;color:white;transition:none;}
+  .nav-links{display:flex;align-items:center;gap:4px;flex:1;}
+  .nav-link{display:flex;align-items:center;gap:8px;padding:10px 20px;border-radius:8px;color:rgba(255,255,255,0.7);font-size:15px;font-weight:500;cursor:pointer;transition:background-color 0.2s,color 0.2s;text-decoration:none;position:relative;}
+  .nav-link:hover{background:rgba(255,255,255,0.08);color:white;}
+  .nav-link.active{color:white;font-weight:600;}
+  .nav-link.active::after{content:'';position:absolute;bottom:-14px;left:50%;transform:translateX(-50%);width:60%;height:3px;background:var(--orange);border-radius:2px 2px 0 0;}
+  .nav-right{display:flex;align-items:center;gap:12px;margin-left:auto;}
+  .nav-icon-btn{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:background-color 0.2s;}
+  .nav-icon-btn:hover{background:rgba(255,255,255,0.2);}
+  .theme-btn{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.1);border:none;color:white;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;transition:background-color 0.2s;}
+  .theme-btn:hover{background:rgba(255,255,255,0.2);}
+  .avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--gold));display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;border:2px solid rgba(255,255,255,0.3);transition:none;}
+  .role-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;transition:none;}
+  .role-owner{background:#fef3c7;color:#92400e;}
+  .role-coowner{background:#dbeafe;color:#1e40af;}
+  .role-member{background:#dcfce7;color:#166534;}
+  .role-guest{background:#f1f5f9;color:#475569;}
+  .role-academic{background:#ede9fe;color:#5b21b6;}
+  .role-activity{background:#fce7f3;color:#9d174d;}
+  .role-work{background:#d1fae5;color:#065f46;}
+  .role-monitor{background:#fee2e2;color:#991b1b;}
+  .role-president{background:linear-gradient(135deg,#fef9c3,#fde68a);color:#78350f;border:1.5px solid #f59e0b;}
+  .role-vicepresident{background:linear-gradient(135deg,#e0f2fe,#bae6fd);color:#0c4a6e;border:1.5px solid #38bdf8;}
+  .nav-admin-btn{display:none;padding:6px 14px;background:rgba(255,255,255,0.12);border:1.5px solid rgba(255,255,255,0.2);border-radius:8px;color:white;font-size:13px;font-weight:600;cursor:pointer;font-family:'Sarabun',sans-serif;transition:background-color 0.2s;white-space:nowrap;}
+  .nav-admin-btn:hover{background:rgba(255,255,255,0.22);}
+  .nav-admin-btn.active{background:var(--orange);border-color:var(--orange);}
+  .profile-wrapper{position:relative;display:flex;align-items:center;gap:8px;}
+  .profile-btn{display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:10px;transition:background-color 0.2s;}
+  .profile-btn:hover{background:rgba(255,255,255,0.1);}
+  .profile-label{color:rgba(255,255,255,0.7);font-size:14px;font-weight:500;font-family:'Sarabun',sans-serif;transition:none;}
+  .profile-caret{color:rgba(255,255,255,0.5);font-size:10px;transition:transform 0.2s;}
+  .profile-wrapper.open .profile-caret{transform:rotate(180deg);}
+  .profile-dropdown{display:none;position:absolute;top:calc(100% + 12px);right:0;background:var(--card-bg);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.18);min-width:220px;overflow:hidden;z-index:999;animation:dropIn 0.2s ease;border:1px solid var(--border);}
+  .profile-wrapper.open .profile-dropdown{display:block;}
+  @keyframes dropIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+  .dropdown-header{padding:16px 18px 12px;border-bottom:1px solid var(--border);text-align:center;}
+  .dropdown-avatar-big{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--gold));display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 8px;border:3px solid #fef3c7;transition:none;}
+  .dropdown-title{font-size:13px;font-weight:600;color:var(--text-dark);}
+  .dropdown-sub{font-size:12px;color:var(--text-muted);margin-top:2px;}
+  .dropdown-menu{padding:8px;}
+  .dropdown-item{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:500;color:var(--text-dark);transition:background-color 0.15s;border:none;background:none;width:100%;text-align:left;font-family:'Sarabun',sans-serif;}
+  .dropdown-item:hover{background:var(--item-hover);}
+  .dropdown-item .di-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;transition:none;}
+  .dropdown-divider{height:1px;background:var(--border);margin:4px 8px;}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(26,35,64,0.5);backdrop-filter:blur(4px);z-index:2000;align-items:center;justify-content:center;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--card-bg);border-radius:20px;width:100%;max-width:420px;margin:20px;box-shadow:0 24px 80px rgba(0,0,0,0.25);animation:modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1);overflow:hidden;}
+  @keyframes modalIn{from{opacity:0;transform:scale(0.88) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+  .modal-top{background:var(--navy);padding:28px 28px 24px;text-align:center;position:relative;}
+  .modal-close{position:absolute;top:14px;right:16px;background:rgba(255,255,255,0.1);border:none;color:white;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:background-color 0.2s;}
+  .modal-close:hover{background:rgba(255,255,255,0.2);}
+  .modal-icon{width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--gold));display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 14px;border:3px solid rgba(255,255,255,0.2);transition:none;}
+  .modal-title{font-family:'Kanit',sans-serif;font-size:20px;font-weight:700;color:white;}
+  .modal-subtitle{font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px;}
+  .modal-body{padding:24px 28px 28px;display:flex;flex-direction:column;gap:14px;}
+  .field-group{display:flex;flex-direction:column;gap:5px;}
+  .field-label{font-size:13px;font-weight:600;color:var(--text-dark);}
+  .field-input{width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;font-family:'Sarabun',sans-serif;color:var(--text-dark);outline:none;transition:border-color 0.2s,box-shadow 0.2s;background:var(--input-bg);}
+  .field-input:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(249,115,22,0.12);}
+  .field-select{width:100%;padding:11px 14px;border:2px solid var(--border);border-radius:10px;font-size:14px;font-family:'Sarabun',sans-serif;color:var(--text-dark);outline:none;background:var(--input-bg);cursor:pointer;}
+  .modal-btn{width:100%;padding:13px;border-radius:12px;border:none;font-size:15px;font-weight:700;font-family:'Sarabun',sans-serif;cursor:pointer;transition:background-color 0.2s,box-shadow 0.2s,transform 0.2s;margin-top:4px;}
+  .modal-btn.primary{background:linear-gradient(135deg,var(--orange),var(--orange-light));color:white;box-shadow:0 4px 14px rgba(249,115,22,0.35);}
+  .modal-btn.primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(249,115,22,0.45);}
+  .modal-btn.secondary{background:var(--item-bg);color:var(--text-muted);border:2px solid var(--border);}
+  .modal-btn.secondary:hover{background:var(--item-hover);}
+  .modal-switch{text-align:center;font-size:13px;color:var(--text-muted);}
+  .modal-switch a{color:var(--orange);font-weight:600;cursor:pointer;text-decoration:none;}
+  .modal-forgot{text-align:right;font-size:12px;margin-top:-6px;}
+  .modal-forgot a{color:var(--text-muted);cursor:pointer;text-decoration:none;}
+  .modal-forgot a:hover{color:var(--orange);}
+  .msg-error{background:#fff5f5;border:1.5px solid #fecaca;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:500;color:#dc2626;transition:none;}
+  main{max-width:1320px;margin:0 auto;padding:36px 32px 60px;}
+  .page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;animation:fadeUp 0.5s ease both;}
+  .page-title{font-family:'Kanit',sans-serif;font-size:24px;font-weight:700;color:var(--text-dark);line-height:1.3;}
+  .page-subtitle{font-size:15px;font-weight:600;color:var(--text-muted);margin-top:6px;}
+  .date-badge{background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;padding:8px 18px;font-size:14px;font-weight:500;color:var(--text-muted);box-shadow:var(--shadow);}
+  .stat-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;animation:fadeUp 0.4s ease both;}
+  .stat-card{background:var(--card-bg);border-radius:16px;padding:24px;box-shadow:var(--shadow);border:1px solid var(--border);display:flex;align-items:center;gap:16px;cursor:pointer;transition:transform 0.2s,box-shadow 0.2s;}
+  .stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);}
+  .stat-icon{width:56px;height:56px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+  .stat-icon.hw{background:rgba(249,115,22,0.12);}
+  .stat-icon.exam{background:rgba(239,68,68,0.12);}
+  .stat-icon.event{background:rgba(234,179,8,0.12);}
+  .stat-icon.todo{background:rgba(20,184,166,0.12);}
+  .stat-num{font-family:'Kanit',sans-serif;font-size:32px;font-weight:700;color:var(--text-dark);line-height:1;}
+  .stat-label{font-size:13px;color:var(--text-muted);margin-top:4px;}
+  .stat-urgent{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;color:#dc2626;background:#fef2f2;padding:2px 7px;border-radius:20px;margin-top:4px;}
+  .dashboard-grid{display:grid;grid-template-columns:1fr 340px;grid-template-rows:auto auto;gap:20px;}
+  .dashboard-col-main{display:flex;flex-direction:column;gap:20px;}
+  .dashboard-col-side{display:flex;flex-direction:column;gap:20px;}
+  .card{background:var(--card-bg);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);transition:transform 0.25s,box-shadow 0.25s;animation:fadeUp 0.5s ease both;border:1px solid var(--border);}
+  .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);}
+  .card-header{background:var(--navy);padding:16px 20px;display:flex;align-items:center;gap:10px;}
+  .card-header-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;transition:none;}
+  .card-header h2{font-family:'Kanit',sans-serif;font-size:16px;font-weight:600;color:white;flex:1;transition:none;}
+  .card-header-count{font-size:12px;font-weight:700;background:rgba(255,255,255,0.15);color:white;padding:2px 9px;border-radius:20px;flex-shrink:0;}
+  .card-view-all{font-size:12px;color:rgba(255,255,255,0.6);text-decoration:none;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background-color 0.15s;flex-shrink:0;}
+  .card-view-all:hover{background:rgba(255,255,255,0.1);color:white;}
+  @media(max-width:1024px){.dashboard-grid{grid-template-columns:1fr;}.stat-bar{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:600px){.stat-bar{grid-template-columns:repeat(2,1fr);}.dashboard-grid{grid-template-columns:1fr;}}
+  .card-body{padding:16px;display:flex;flex-direction:column;gap:12px;}
+  .btn-add-card{background:rgba(255,255,255,0.15);border:none;color:white;width:28px;height:28px;border-radius:7px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:background-color 0.2s;flex-shrink:0;}
+  .btn-add-card:hover{background:rgba(255,255,255,0.28);}
+  .hw-item{background:var(--item-bg);border-radius:12px;padding:12px 14px;border-left:4px solid transparent;transition:background-color 0.2s;position:relative;}
+  .hw-item:hover{background:var(--item-hover);}
+  .hw-item.urgent{border-left-color:var(--red-accent);}
+  .hw-item.warn{border-left-color:var(--orange);}
+  .hw-item.ok{border-left-color:var(--green-accent);}
+  .hw-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .hw-flag{font-size:18px;}
+  .hw-name{font-size:14px;font-weight:600;color:var(--text-dark);flex:1;}
+  .hw-meta{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px;}
+  .hw-due{display:flex;align-items:center;gap:4px;}
+  .hw-days{display:flex;align-items:center;gap:4px;font-weight:600;color:var(--text-dark);background:#e8f4fd;padding:2px 8px;border-radius:20px;font-size:12px;}
+  .hw-bar-track{height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+  .hw-bar{height:100%;border-radius:3px;transition:none;}
+  .hw-bar.red{background:var(--red-accent);width:25%;}
+  .hw-bar.orange{background:var(--orange);width:55%;}
+  .hw-bar.green{background:var(--green-accent);width:85%;}
+  .countdown{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;}
+  .cd-box{background:var(--navy);color:white;border-radius:8px;padding:4px 8px;text-align:center;min-width:42px;}
+  .cd-num{font-family:'Kanit',sans-serif;font-size:16px;font-weight:700;line-height:1;transition:none;color:#ffffff;}
+  .cd-lbl{font-size:9px;color:rgba(255,255,255,0.75);margin-top:2px;transition:none;}
+  .cd-box.urgent-cd{background:var(--red-accent);}
+  .cd-box.warn-cd{background:var(--orange);}
+  .cd-box.ok-cd{background:var(--green-accent);}
+  .item-actions{position:absolute;top:8px;right:8px;display:none;gap:4px;}
+  .hw-item:hover .item-actions,.exam-item:hover .item-actions,.event-item:hover .item-actions{display:flex;}
+  @media(hover:none){.item-actions{display:flex;}}
+  .btn-edit-item,.btn-delete-item{background:none;border:none;cursor:pointer;font-size:13px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:background-color 0.2s,color 0.2s;}
+  .btn-edit-item{color:#94a3b8;}.btn-edit-item:hover{color:var(--blue-accent);background:rgba(59,130,246,0.1);}
+  .btn-delete-item{color:#94a3b8;}.btn-delete-item:hover{color:var(--red-accent);background:rgba(239,68,68,0.1);}
+  .todo-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:var(--item-bg);transition:background-color 0.2s;user-select:none;position:relative;}
+  .todo-item:hover{background:var(--item-hover);}
+  .todo-check{width:22px;height:22px;border-radius:6px;border:2.5px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background-color 0.2s,border-color 0.2s;font-size:13px;cursor:pointer;}
+  .todo-item.done .todo-check{background:var(--orange);border-color:var(--orange);color:white;}
+  .todo-label{font-size:14px;font-weight:500;color:var(--text-dark);flex:1;}
+  .todo-item.done .todo-label{text-decoration:line-through;color:var(--text-muted);}
+  .todo-del{background:none;border:none;cursor:pointer;font-size:13px;color:#cbd5e1;transition:color 0.2s;display:none;}
+  .todo-item:hover .todo-del{display:block;}
+  .todo-del:hover{color:var(--red-accent);}
+  .todo-add-row{display:flex;gap:8px;margin-top:4px;}
+  .todo-input{flex:1;padding:9px 12px;border:2px solid var(--border);border-radius:10px;font-size:14px;font-family:'Sarabun',sans-serif;outline:none;transition:border-color 0.2s;background:var(--input-bg);color:var(--text-dark);}
+  .todo-input:focus{border-color:var(--orange);}
+  .todo-submit{padding:9px 14px;background:var(--orange);color:white;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;transition:background-color 0.2s;}
+  .todo-submit:hover{background:var(--orange-light);}
+  .lock-notice{background:var(--item-bg);border:2px dashed var(--border);border-radius:10px;padding:14px;text-align:center;font-size:13px;color:var(--text-muted);}
+  .exam-item{border-radius:12px;padding:14px 16px;border-left:5px solid transparent;background:var(--item-bg);position:relative;}
+  .exam-item.red{border-left-color:var(--red-accent);}
+  .exam-item.yellow{border-left-color:var(--yellow-accent);}
+  .exam-name{font-size:14px;font-weight:700;color:var(--text-dark);margin-bottom:8px;}
+  .exam-meta{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--text-muted);flex-wrap:wrap;gap:4px;}
+  .exam-date,.exam-room{display:flex;align-items:center;gap:4px;}
+  .event-item{border-radius:12px;padding:14px 16px;border-left:5px solid transparent;background:var(--item-bg);position:relative;}
+  .event-item.blue{border-left-color:var(--blue-accent);}
+  .event-item.green{border-left-color:var(--green-accent);}
+  .event-name{font-size:14px;font-weight:700;color:var(--text-dark);margin-bottom:6px;}
+  .event-sub{font-size:12px;color:var(--text-muted);margin-bottom:8px;}
+  .event-meta{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--text-muted);}
+  .event-date{display:flex;align-items:center;gap:4px;font-weight:500;}
+  .search-wrap{position:relative;display:flex;align-items:center;}
+  .search-icon{position:absolute;left:12px;font-size:14px;pointer-events:none;}
+  .search-input{padding:9px 36px 9px 36px;border:2px solid var(--border);border-radius:12px;font-size:14px;font-family:'Sarabun',sans-serif;color:var(--text-dark);background:var(--card-bg);outline:none;width:280px;transition:border-color 0.2s,box-shadow 0.2s;}
+  .search-input:focus{border-color:var(--orange);box-shadow:0 0 0 3px rgba(249,115,22,0.12);}
+  .search-clear{position:absolute;right:10px;background:none;border:none;cursor:pointer;font-size:13px;color:var(--text-muted);transition:color 0.2s;}
+  .search-clear:hover{color:var(--red-accent);}
+  .search-highlight{background:rgba(249,115,22,0.2);border-radius:3px;padding:0 2px;}
+  .no-result{text-align:center;padding:20px;color:var(--text-muted);font-size:14px;background:var(--item-bg);border-radius:10px;border:2px dashed var(--border);}
+  @media(max-width:768px){.search-input{width:200px;}}
+  .cal-head{padding:10px;text-align:center;font-family:'Kanit',sans-serif;font-size:13px;font-weight:600;color:rgba(255,255,255,0.8);}
+  .cal-day{min-height:88px;padding:6px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--card-bg);cursor:pointer;transition:background-color 0.15s;position:relative;}
+  .cal-day:hover{background:var(--item-hover);}
+  .cal-day.other-month{background:var(--item-bg);opacity:0.45;pointer-events:none;}
+  .cal-day.today{background:rgba(249,115,22,0.07);}
+  .cal-day.today .cal-day-num{background:var(--orange);color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;}
+  .cal-day.selected{background:rgba(59,130,246,0.10);outline:2px solid var(--blue-accent);outline-offset:-1px;}
+  .cal-day.selected .cal-day-num{background:var(--blue-accent);color:white;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;}
+  .cal-day.day-holiday{background:rgba(239,68,68,0.07);}
+  .cal-day.day-holiday .cal-day-num{color:#dc2626;}
+  .cal-day.day-special{background:rgba(234,179,8,0.08);}
+  .cal-day-num{font-size:13px;font-weight:600;color:var(--text-dark);margin-bottom:3px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;}
+  .cal-holiday-tag{font-size:9px;font-weight:700;color:#dc2626;background:rgba(239,68,68,0.12);padding:1px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cal-special-tag{font-size:9px;font-weight:700;color:#b45309;background:rgba(234,179,8,0.14);padding:1px 5px;border-radius:3px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cal-dot{font-size:10px;padding:1px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cal-dot.hw{background:rgba(249,115,22,0.15);color:var(--orange);}
+  .cal-dot.exam{background:rgba(239,68,68,0.15);color:var(--red-accent);}
+  .cal-dot.event{background:rgba(59,130,246,0.15);color:var(--blue-accent);}
+  .cal-filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center;}
+  .cal-filter-chip{display:flex;align-items:center;gap:5px;padding:6px 13px;border-radius:20px;font-family:'Sarabun',sans-serif;font-size:12px;font-weight:600;border:1.5px solid var(--border);background:var(--card-bg);color:var(--text-muted);cursor:pointer;transition:color 0.18s,background-color 0.18s,border-color 0.18s;user-select:none;}
+  .cal-filter-chip.chip-hw.active{color:var(--orange);background:rgba(249,115,22,0.08);border-color:var(--orange);}
+  .cal-filter-chip.chip-exam.active{color:var(--red-accent);background:rgba(239,68,68,0.08);border-color:var(--red-accent);}
+  .cal-filter-chip.chip-event.active{color:var(--blue-accent);background:rgba(59,130,246,0.08);border-color:var(--blue-accent);}
+  .cal-filter-chip.chip-holiday.active{color:#dc2626;background:rgba(239,68,68,0.06);border-color:#dc2626;}
+  .cal-day-panel{background:var(--card-bg);border-radius:16px;box-shadow:var(--shadow);border:1px solid var(--border);margin-top:20px;overflow:hidden;animation:fadeUp 0.25s ease;}
+  .cal-day-panel-header{background:var(--navy);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .cal-day-panel-title{font-family:'Kanit',sans-serif;font-size:16px;font-weight:700;color:white;}
+  .cal-day-panel-close{background:rgba(255,255,255,0.15);border:none;color:white;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+  .cal-day-panel-body{padding:16px 20px;display:flex;flex-direction:column;gap:10px;}
+  .cal-day-panel-empty{text-align:center;padding:24px;color:var(--text-muted);font-size:13px;}
+  .cal-panel-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:12px;cursor:pointer;transition:background-color 0.15s;border:1px solid var(--border);}
+  .cal-panel-item:hover{background:var(--item-hover);}
+  .cal-panel-item.holiday-item{border-color:rgba(239,68,68,0.25);background:rgba(239,68,68,0.04);cursor:default;}
+  .cal-panel-item.holiday-item:hover{background:rgba(239,68,68,0.07);}
+  .cal-panel-item.special-item{border-color:rgba(234,179,8,0.3);background:rgba(234,179,8,0.04);cursor:default;}
+  .cal-panel-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .cal-panel-dot.hw{background:var(--orange);}
+  .cal-panel-dot.exam{background:var(--red-accent);}
+  .cal-panel-dot.event{background:var(--blue-accent);}
+  .cal-panel-dot.holiday{background:#dc2626;}
+  .cal-panel-dot.special{background:#d97706;}
+  .cal-panel-name{font-size:14px;font-weight:600;color:var(--text-dark);flex:1;}
+  .cal-panel-subject{font-size:12px;color:var(--text-muted);margin-top:2px;}
+  .cal-panel-type{font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;flex-shrink:0;}
+  .cal-panel-type.hw{background:rgba(249,115,22,0.12);color:var(--orange);}
+  .cal-panel-type.exam{background:rgba(239,68,68,0.12);color:var(--red-accent);}
+  .cal-panel-type.event{background:rgba(59,130,246,0.12);color:var(--blue-accent);}
+  .cal-panel-type.holiday{background:rgba(239,68,68,0.12);color:#dc2626;}
+  .cal-panel-type.special{background:rgba(234,179,8,0.14);color:#b45309;}
+  .cal-add-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:12px;border:2px dashed var(--border);background:none;cursor:pointer;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:600;color:var(--text-muted);transition:border-color 0.2s,color 0.2s,background-color 0.2s;width:100%;}
+  .cal-add-btn:hover{border-color:var(--orange);color:var(--orange);background:rgba(249,115,22,0.04);}
+  .cal-add-holiday-btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;border-radius:12px;border:2px dashed rgba(239,68,68,0.3);background:none;cursor:pointer;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:600;color:#dc2626;transition:border-color 0.2s,background-color 0.2s;width:100%;}
+  .cal-add-holiday-btn:hover{border-color:#dc2626;background:rgba(239,68,68,0.05);}
+  .cal-legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:var(--text-muted);}
+  .cal-legend-item{display:flex;align-items:center;gap:5px;}
+  .cal-legend-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0;}
+  #personnelPage{display:none;max-width:1100px;margin:0 auto;padding:36px 32px 60px;}
+  .personnel-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+  .personnel-title{font-family:'Kanit',sans-serif;font-size:24px;font-weight:700;color:var(--text-dark);}
+  .personnel-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;}
+  .personnel-card{background:var(--card-bg);border-radius:16px;padding:20px;box-shadow:var(--shadow);border:1px solid var(--border);transition:box-shadow 0.2s,transform 0.2s;cursor:pointer;position:relative;}
+  .personnel-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px);}
+  .personnel-avatar{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:white;margin-bottom:12px;flex-shrink:0;}
+  .personnel-name{font-family:'Kanit',sans-serif;font-size:16px;font-weight:700;color:var(--text-dark);margin-bottom:4px;}
+  .personnel-role-tag{display:inline-flex;align-items:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:10px;}
+  .personnel-info-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-muted);margin-bottom:6px;}
+  .personnel-info-row:last-child{margin-bottom:0;}
+  .personnel-info-icon{font-size:14px;flex-shrink:0;}
+  .personnel-card-actions{display:flex;gap:6px;position:absolute;top:12px;right:12px;opacity:0;transition:opacity 0.2s;}
+  .personnel-card:hover .personnel-card-actions{opacity:1;}
+  @media(hover:none){.personnel-card-actions{opacity:1;}}
+  .personnel-edit-btn,.personnel-del-btn{width:28px;height:28px;border-radius:8px;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background-color 0.15s;}
+  .personnel-edit-btn{background:var(--item-bg);color:var(--text-muted);}
+  .personnel-edit-btn:hover{background:var(--item-hover);color:var(--blue-accent);}
+  .personnel-del-btn{background:#fff1f2;color:#be123c;}
+  .personnel-del-btn:hover{background:#ffe4e6;}
+  /* ── PERSONNEL AVATAR IMAGE ── */
+  .personnel-avatar-img{width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center;border:3px solid var(--border);display:block;flex-shrink:0;margin-bottom:12px;}
+  .avatar-upload-wrap{position:relative;width:80px;height:80px;margin:0 auto 12px;cursor:pointer;}
+  .avatar-upload-wrap .avatar-preview{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--border);display:block;transition:filter 0.2s;}
+  .avatar-upload-wrap .avatar-placeholder{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--gold));display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:white;border:3px solid var(--border);transition:filter 0.2s;}
+  .avatar-upload-wrap:hover .avatar-preview,.avatar-upload-wrap:hover .avatar-placeholder{filter:brightness(0.75);}
+  .avatar-upload-overlay{position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 0.2s;pointer-events:none;font-size:22px;}
+  .avatar-upload-wrap:hover .avatar-upload-overlay{opacity:1;}
+  #pf_photo_input{display:none;}
+  .avatar-remove-btn{position:absolute;top:-2px;right:-2px;width:22px;height:22px;border-radius:50%;background:#ef4444;color:white;border:none;font-size:11px;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.2);}
+  .avatar-remove-btn.visible{display:flex;}
+  .avatar-upload-hint{text-align:center;font-size:11px;color:var(--text-muted);margin-top:4px;}
+  @media(max-width:768px){.personnel-avatar-img{width:48px;height:48px;}}
+  .btn-comment{background:rgba(255,255,255,0.15);border:none;color:white;padding:3px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;font-family:'Sarabun',sans-serif;transition:background-color 0.2s;display:flex;align-items:center;gap:4px;}
+  .btn-comment:hover{background:rgba(255,255,255,0.28);}
+  .comment-bubble{background:var(--item-bg);border-radius:12px;padding:10px 14px;border:1px solid var(--border);}
+  .comment-author{font-size:12px;font-weight:700;color:var(--orange);margin-bottom:3px;}
+  .comment-text{font-size:13px;color:var(--text-dark);line-height:1.5;}
+  .comment-time{font-size:10px;color:var(--text-muted);margin-top:4px;}
+  .comment-own{background:rgba(249,115,22,0.08);border-color:rgba(249,115,22,0.2);}
+  .comment-del{float:right;background:none;border:none;cursor:pointer;color:#cbd5e1;font-size:11px;transition:color 0.2s;}
+  .comment-del:hover{color:var(--red-accent);}
+  .comment-empty{text-align:center;padding:20px;color:var(--text-muted);font-size:13px;}
+  .skeleton{background:linear-gradient(90deg,var(--item-bg) 25%,var(--item-hover) 50%,var(--item-bg) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:8px;}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .skeleton-item{padding:14px 16px;border-radius:12px;border:1px solid var(--border);margin-bottom:10px;display:flex;flex-direction:column;gap:8px;}
+  .skeleton-line{height:12px;border-radius:6px;}.skeleton-line.wide{width:70%;}.skeleton-line.medium{width:45%;}.skeleton-line.narrow{width:30%;}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--text-muted);}
+  .empty-state-icon{font-size:40px;margin-bottom:12px;opacity:0.6;}
+  .empty-state-text{font-size:15px;font-weight:600;color:var(--text-dark);margin-bottom:6px;}
+  .empty-state-sub{font-size:13px;}
+  .filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+  .filter-select{padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:600;color:var(--text-dark);background:var(--card-bg);cursor:pointer;outline:none;transition:border-color 0.2s;}
+  .filter-select:focus{border-color:var(--orange);}
+  .item-subject-tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:var(--blue-accent);background:rgba(59,130,246,0.08);padding:2px 9px;border-radius:20px;margin:3px 0 4px;}
+  .detail-modal{max-width:520px;padding:0;overflow:hidden;}
+  .detail-hero{padding:28px 28px 20px;position:relative;}
+  .detail-hero-hw-urgent{background:linear-gradient(135deg,#7f1d1d,#b91c1c);}
+  .detail-hero-hw-warn{background:linear-gradient(135deg,#7c2d12,#c2410c);}
+  .detail-hero-hw-ok{background:linear-gradient(135deg,#1a2340,#2d3a55);}
+  .detail-hero-exam{background:linear-gradient(135deg,#4c1d95,#6d28d9);}
+  .detail-hero-event-blue{background:linear-gradient(135deg,#1e3a5f,#1e40af);}
+  .detail-hero-event-green{background:linear-gradient(135deg,#14532d,#166534);}
+  .detail-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;margin-bottom:12px;background:rgba(255,255,255,0.18);color:white;}
+  .detail-title{font-family:'Kanit',sans-serif;font-size:21px;font-weight:700;color:white;line-height:1.3;margin-bottom:10px;}
+  .detail-chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .detail-chip{display:flex;align-items:center;gap:5px;padding:4px 11px;border-radius:8px;font-size:12px;font-weight:600;background:rgba(255,255,255,0.15);color:rgba(255,255,255,0.92);}
+  .detail-countdown-row{display:flex;gap:8px;justify-content:center;padding:16px 24px;border-bottom:1px solid var(--border);}
+  .detail-cd-box{flex:1;text-align:center;background:var(--item-bg);border-radius:12px;padding:10px 4px;max-width:72px;}
+  .detail-cd-num{font-family:'Kanit',sans-serif;font-size:24px;font-weight:800;color:var(--text-dark);line-height:1;}
+  .detail-cd-lbl{font-size:10px;color:var(--text-muted);margin-top:3px;}
+  .detail-body{padding:16px 24px 4px;}
+  .detail-section-title{font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:8px;}
+  .detail-actions{display:flex;gap:8px;padding:8px 24px 22px;flex-wrap:wrap;}
+  .detail-action-btn{flex:1;min-width:100px;padding:10px 14px;border-radius:10px;border:none;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background-color 0.2s,border-color 0.2s,color 0.2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .detail-action-btn.edit{background:var(--item-bg);color:var(--text-dark);border:1.5px solid var(--border);}
+  .detail-action-btn.edit:hover{background:var(--item-hover);border-color:var(--blue-accent);color:var(--blue-accent);}
+  .detail-action-btn.delete{background:#fff1f2;color:#be123c;border:1.5px solid #fecdd3;}
+  .detail-action-btn.delete:hover{background:#ffe4e6;}
+  .detail-action-btn.comment-btn{background:var(--orange);color:white;box-shadow:0 4px 12px rgba(249,115,22,0.25);}
+  .detail-action-btn.comment-btn:hover{background:var(--orange-light);}
+  .hw-item,.exam-item,.event-item{cursor:pointer;}
+  #timetablePage{display:none;max-width:1320px;margin:0 auto;padding:36px 32px 60px;}
+  .tt-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+  .tt-title{font-family:'Kanit',sans-serif;font-size:24px;font-weight:700;color:var(--text-dark);}
+  .tt-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  .tt-btn{padding:8px 18px;border-radius:10px;border:none;font-family:'Sarabun',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background-color 0.2s,box-shadow 0.2s;}
+  .tt-btn.primary{background:var(--orange);color:white;box-shadow:0 4px 12px rgba(249,115,22,0.3);}
+  .tt-btn.primary:hover{background:var(--orange-light);}
+  .tt-btn.secondary{background:var(--card-bg);color:var(--text-dark);border:1.5px solid var(--border);}
+  .tt-btn.secondary:hover{background:var(--item-hover);}
+  .tt-btn.danger{background:#fff1f2;color:#be123c;border:1.5px solid #fecdd3;}
+  .tt-btn.danger:hover{background:#ffe4e6;}
+  .tt-wrap{background:var(--card-bg);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;border:1px solid var(--border);}
+  .tt-table{width:100%;border-collapse:collapse;min-width:700px;}
+  .tt-table th{background:var(--navy);color:white;padding:12px 8px;font-family:'Kanit',sans-serif;font-size:13px;font-weight:600;text-align:center;border-right:1px solid rgba(255,255,255,0.1);}
+  .tt-table th:last-child{border-right:none;}
+  .tt-table td{padding:6px;border:1px solid var(--border);background:var(--card-bg);vertical-align:top;min-width:110px;position:relative;}
+  .tt-period-col{background:var(--item-bg) !important;text-align:center;font-size:12px;font-weight:700;color:var(--text-muted);padding:8px 6px !important;white-space:nowrap;min-width:70px !important;}
+  .tt-cell-inner{border-radius:8px;padding:7px 9px;font-size:12px;cursor:pointer;transition:filter 0.2s;height:100%;position:relative;min-height:52px;}
+  .tt-cell-inner:hover{filter:brightness(0.93);}
+  .tt-cell-empty{display:flex;align-items:center;justify-content:center;color:var(--border);font-size:18px;min-height:52px;border-radius:8px;border:2px dashed var(--border);cursor:pointer;transition:border-color 0.2s,color 0.2s,background-color 0.2s;}
+  .tt-cell-empty:hover{border-color:var(--orange);color:var(--orange);background:rgba(249,115,22,0.05);}
+  .tt-subject{font-weight:700;color:white;font-size:12px;line-height:1.3;margin-bottom:3px;}
+  .tt-teacher{font-size:11px;color:rgba(255,255,255,0.82);display:flex;align-items:center;gap:3px;}
+  .tt-room{font-size:10px;color:rgba(255,255,255,0.7);margin-top:2px;}
+  .tt-cell-now{box-shadow:0 0 0 3px var(--orange),0 4px 16px rgba(249,115,22,0.35) !important;animation:ttPulse 2s ease-in-out infinite;}
+  @keyframes ttPulse{0%,100%{box-shadow:0 0 0 3px var(--orange),0 4px 16px rgba(249,115,22,0.35)}50%{box-shadow:0 0 0 5px var(--orange-light),0 4px 24px rgba(249,115,22,0.5)}}
+  .tt-now-badge{position:absolute;top:4px;right:4px;background:white;color:var(--orange);font-size:9px;font-weight:800;padding:1px 5px;border-radius:20px;letter-spacing:0.5px;}
+  .tt-scroll{overflow-x:auto;}
+  .tt-legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;}
+  .tt-legend-item{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);}
+  .tt-legend-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0;}
+  .tt-empty-state{text-align:center;padding:60px 24px;color:var(--text-muted);}
+  .tt-empty-icon{font-size:48px;margin-bottom:16px;}
+  .tt-empty-text{font-size:16px;font-weight:600;margin-bottom:8px;color:var(--text-dark);}
+  .tt-empty-sub{font-size:14px;}
+  .tt-period-row-now td{background:rgba(249,115,22,0.04);}
+  .tt-settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media(max-width:768px){#timetablePage{padding:20px 16px 40px;}.tt-toolbar{flex-direction:column;align-items:flex-start;}.tt-settings-grid{grid-template-columns:1fr;}}
+  .loading-spinner{text-align:center;padding:20px;color:var(--text-muted);font-size:14px;}
+  .empty-state{text-align:center;padding:20px;color:var(--text-muted);font-size:13px;background:var(--item-bg);border-radius:10px;border:2px dashed var(--border);}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+  .toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--navy);color:white;padding:12px 24px;border-radius:40px;font-size:14px;font-weight:500;font-family:'Sarabun',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.25);opacity:0;transition:opacity 0.35s,transform 0.35s cubic-bezier(0.34,1.56,0.64,1);pointer-events:none;z-index:9999;white-space:nowrap;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast.success{background:#16a34a;}
+  .toast.error{background:#dc2626;}
+  .admin-panel{max-width:1320px;margin:0 auto;padding:0 32px 60px;display:none;}
+  .admin-panel.visible{display:block;}
+  .admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+  .admin-card{background:var(--card-bg);border-radius:16px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--border);}
+  .admin-card-head{background:var(--navy);padding:14px 20px;display:flex;align-items:center;gap:10px;}
+  .admin-card-head h3{font-family:'Kanit',sans-serif;font-size:15px;font-weight:600;color:white;transition:none;}
+  .admin-card-body{padding:16px;}
+  .user-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;background:var(--item-bg);margin-bottom:8px;}
+  .user-row:hover{background:var(--item-hover);}
+  .user-avatar-sm{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--orange),var(--gold));display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:white;flex-shrink:0;transition:none;}
+  .user-info{flex:1;min-width:0;}
+  .user-info-name{font-size:13px;font-weight:600;color:var(--text-dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .user-info-email{font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .role-select{padding:5px 10px;border:2px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;font-family:'Sarabun',sans-serif;cursor:pointer;outline:none;background:var(--card-bg);color:var(--text-dark);}
+  .btn-save-role{padding:5px 12px;background:var(--orange);color:white;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Sarabun',sans-serif;}
+  .log-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .log-table th{background:var(--item-bg);padding:8px 12px;text-align:left;font-weight:700;color:var(--text-muted);font-size:12px;}
+  .log-table td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle;color:var(--text-dark);}
+  .log-table tr:last-child td{border-bottom:none;}
+  .log-action{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;transition:none;}
+  .log-login{background:#dbeafe;color:#1e40af;}.log-logout{background:#f1f5f9;color:#475569;}
+  .log-signup{background:#dcfce7;color:#166534;}.log-add{background:#fef3c7;color:#92400e;}
+  .log-delete{background:#fff1f2;color:#be123c;}.log-role{background:#f3e8ff;color:#6b21a8;}
+  .log-edit{background:#e0f2fe;color:#0369a1;}
+  .log-empty{text-align:center;padding:24px;color:var(--text-muted);font-size:14px;}
+  .log-time{color:var(--text-muted);font-size:11px;white-space:nowrap;}
+  .log-wrap{max-height:400px;overflow-y:auto;}
+  .hamburger{display:none;flex-direction:column;gap:5px;background:none;border:none;cursor:pointer;padding:6px;}
+  .hamburger span{width:22px;height:2px;background:white;border-radius:2px;transition:transform 0.3s,opacity 0.3s;}
+  .mobile-menu{display:none;position:fixed;top:64px;left:0;right:0;background:var(--navy);z-index:99;flex-direction:column;padding:8px 16px 16px;box-shadow:0 8px 24px rgba(0,0,0,0.3);}
+  .mobile-menu.open{display:flex;}
+  .mobile-menu .nav-link{padding:12px 16px;border-radius:10px;font-size:15px;}
+  @media(max-width:1100px){.dashboard-grid{grid-template-columns:repeat(2,1fr)}.admin-grid{grid-template-columns:1fr}}
+  @media(max-width:768px){
+    .nav-links{display:none;}.hamburger{display:flex;}nav{padding:0 12px;height:56px;}
+    .nav-logo span{font-size:18px;}.nav-logo .logo-icon{width:34px;height:34px;font-size:17px;}
+    .mobile-menu{top:56px;}main{padding:14px 12px 80px;}
+    .page-header{flex-direction:column;gap:10px;margin-bottom:16px;}
+    .page-header > div:last-child{width:100%;}
+    .search-wrap{width:100%;}.search-input{width:100% !important;}
+    .date-badge{font-size:13px;padding:7px 14px;}
+    .admin-panel{padding:0 12px 60px;}
+    .profile-label{display:none;}
+    #calendarPage,#statsPage{padding:14px 12px 60px;}
+    .stat-bar{grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px;}
+    .stat-card{padding:12px 14px;border-radius:12px;}
+    .stat-icon{width:38px;height:38px;font-size:17px;}.stat-num{font-size:22px;}
+    .dashboard-grid{grid-template-columns:1fr;gap:14px;}
+    .card-header h2{font-size:14px;}.card-body{padding:12px;gap:10px;}
+    .modal{margin:10px;border-radius:16px;}.modal-top{padding:20px 20px 18px;}
+    .modal-body{padding:18px 20px 22px;gap:12px;}
+    .modal-icon{width:54px;height:54px;font-size:24px;}.modal-title{font-size:18px;}
+    .hw-item,.exam-item,.event-item{padding:10px 12px;}.hw-name{font-size:13px;}
+    .item-actions{display:flex !important;}.btn-edit-item,.btn-delete-item{width:28px;height:28px;font-size:15px;}
+    #timetablePage{padding:14px 12px 60px;}.tt-toolbar{flex-direction:column;align-items:stretch;gap:10px;}
+    .tt-title{font-size:20px;}.tt-actions{flex-wrap:wrap;}.tt-btn{padding:8px 14px;font-size:13px;}
+    .admin-grid{grid-template-columns:1fr;}
+    .detail-hero{padding:20px 18px 16px;}.detail-title{font-size:18px;}
+    .detail-actions{padding:8px 16px 18px;gap:6px;}.detail-action-btn{font-size:13px;padding:9px 10px;}
+    .filter-bar{gap:8px;}.filter-select{font-size:12px;padding:7px 10px;}
+    .todo-add-row{gap:6px;}.todo-input{font-size:13px;}.todo-submit{font-size:12px;padding:9px 10px;}
+    .page-title{font-size:20px;}.page-subtitle{font-size:13px;}
+    .nav-admin-btn{font-size:11px;padding:5px 10px;}
+    .toast{bottom:20px;font-size:13px;padding:10px 20px;max-width:90vw;white-space:normal;text-align:center;}
+    #personnelPage{padding:14px 12px 60px;}
+    .personnel-grid{grid-template-columns:1fr 1fr;gap:10px;}.personnel-card{padding:14px;}
+    .personnel-avatar{width:48px;height:48px;font-size:20px;}.personnel-name{font-size:14px;}
+  }
+  @media(max-width:440px){.personnel-grid{grid-template-columns:1fr;}}
+  @media(max-width:400px){
+    .stat-bar{grid-template-columns:1fr 1fr;gap:8px;}.stat-card{padding:10px 10px;}.stat-num{font-size:20px;}
+    nav{padding:0 8px;}main{padding:12px 10px 80px;}.modal{margin:6px;}.nav-logo span{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">
+    <div class="logo-icon">📚</div>
+    <span>Classroom</span>
+  </div>
+  <div class="nav-links">
+    <a class="nav-link active" data-page="dashboard" id="navHome">🏠 หน้าแรก</a>
+    <a class="nav-link" data-page="hw" id="navHw">📖 การบ้าน</a>
+    <a class="nav-link" data-page="exam" id="navExam">📝 ข้อสอบ</a>
+    <a class="nav-link" data-page="event" id="navEvent">🎉 กิจกรรม</a>
+    <a class="nav-link" data-page="timetable" id="navTimetable">🗓️ ตารางเรียน</a>
+    <a class="nav-link" data-page="calendar" id="navCalendar">📅 ปฏิทิน</a>
+    <a class="nav-link" data-page="personnel" id="navPersonnel">👨‍🏫 บุคลากร</a>
+  </div>
+  <button class="hamburger" id="hamburger" onclick="window.toggleMobileMenu()">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="nav-right">
+    <button class="theme-btn" onclick="toggleTheme()" id="themeBtn" title="เปลี่ยนธีม">🌙</button>
+    <button class="nav-icon-btn" id="notifBtn" onclick="window.toggleNotifPermission()" title="แจ้งเตือน">🔔</button>
+    <button class="nav-admin-btn" id="navAdminBtn" onclick="toggleAdminPanel()">⚙️ จัดการ</button>
+    <div class="profile-wrapper" id="profileWrapper">
+      <button class="profile-btn" onclick="toggleDropdown()">
+        <div class="avatar" id="navAvatar">👤</div>
+        <span class="profile-label" id="navLabel">โปรไฟล์</span>
+        <span id="navRoleBadge"></span>
+        <span class="profile-caret">▼</span>
+      </button>
+      <div class="profile-dropdown" id="profileDropdown"></div>
+    </div>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a class="nav-link" data-page="dashboard" data-close-menu="1">🏠 หน้าแรก</a>
+  <a class="nav-link" data-page="hw" data-close-menu="1">📖 การบ้าน</a>
+  <a class="nav-link" data-page="exam" data-close-menu="1">📝 ข้อสอบ</a>
+  <a class="nav-link" data-page="event" data-close-menu="1">🎉 กิจกรรม</a>
+  <a class="nav-link" data-page="timetable" data-close-menu="1">🗓️ ตารางเรียน</a>
+  <a class="nav-link" data-page="calendar" data-close-menu="1">📅 ปฏิทิน</a>
+  <a class="nav-link" data-page="personnel" data-close-menu="1">👨‍🏫 บุคลากร</a>
+</div>
+
+<!-- LOGIN MODAL -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal">
+    <div class="modal-top">
+      <button class="modal-close" onclick="closeModal('loginModal')">✕</button>
+      <div class="modal-icon">🔑</div>
+      <div class="modal-title">เข้าสู่ระบบ</div>
+      <div class="modal-subtitle">ยินดีต้อนรับกลับมา!</div>
+    </div>
+    <div class="modal-body">
+      <div id="loginError" class="msg-error" style="display:none"></div>
+      <div class="field-group"><label class="field-label">อีเมล</label><input class="field-input" id="loginEmail" type="email" placeholder="example@email.com"></div>
+      <div class="field-group"><label class="field-label">รหัสผ่าน</label><input class="field-input" id="loginPassword" type="password" placeholder="••••••••"></div>
+      <button class="modal-btn primary" onclick="handleLogin()">🔓 เข้าสู่ระบบ</button>
+      <div class="modal-switch">ยังไม่มีบัญชี? <a onclick="switchModal('loginModal','signupModal')">สมัครสมาชิกที่นี่</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- SIGNUP MODAL -->
+<div class="modal-overlay" id="signupModal">
+  <div class="modal">
+    <div class="modal-top">
+      <button class="modal-close" onclick="closeModal('signupModal')">✕</button>
+      <div class="modal-icon">✏️</div>
+      <div class="modal-title">สมัครสมาชิก</div>
+      <div class="modal-subtitle">สร้างบัญชีใหม่ได้เลย!</div>
+    </div>
+    <div class="modal-body">
+      <div id="signupError" class="msg-error" style="display:none"></div>
+      <div class="field-group"><label class="field-label">ชื่อ-นามสกุล</label><input class="field-input" id="signupName" type="text" placeholder="เช่น สมชาย ใจดี"></div>
+      <div class="field-group"><label class="field-label">อีเมล</label><input class="field-input" id="signupEmail" type="email" placeholder="example@email.com"></div>
+      <div class="field-group"><label class="field-label">รหัสผ่าน</label><input class="field-input" id="signupPassword" type="password" placeholder="อย่างน้อย 8 ตัวอักษร"></div>
+      <div class="field-group"><label class="field-label">ยืนยันรหัสผ่าน</label><input class="field-input" id="signupConfirm" type="password" placeholder="••••••••"></div>
+      <button class="modal-btn primary" onclick="handleSignup()">🎉 สมัครสมาชิก</button>
+      <div class="modal-switch">มีบัญชีอยู่แล้ว? <a onclick="switchModal('signupModal','loginModal')">เข้าสู่ระบบ</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-top">
+      <button class="modal-close" onclick="closeModal('addModal')">✕</button>
+      <div class="modal-icon" id="addModalIcon">➕</div>
+      <div class="modal-title" id="addModalTitle">เพิ่มข้อมูล</div>
+    </div>
+    <div class="modal-body" id="addModalBody"></div>
+  </div>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div class="modal-overlay" id="editProfileModal">
+  <div class="modal">
+    <div class="modal-top">
+      <button class="modal-close" onclick="closeModal('editProfileModal')">✕</button>
+      <div class="modal-icon">👤</div>
+      <div class="modal-title">แก้ไขโปรไฟล์</div>
+      <div class="modal-subtitle">อัปเดตข้อมูลของคุณ</div>
+    </div>
+    <div class="modal-body">
+      <div id="editProfileError" class="msg-error" style="display:none"></div>
+      <div id="editProfileSuccess" style="display:none;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:500;color:#16a34a;"></div>
+      <div class="field-group"><label class="field-label">ชื่อ-นามสกุล</label><input class="field-input" id="editName" type="text" placeholder="ชื่อ-นามสกุล"></div>
+      <div style="height:1px;background:var(--border);margin:4px 0;"></div>
+      <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:-4px;">เปลี่ยนรหัสผ่าน (ไม่บังคับ)</div>
+      <div class="field-group"><label class="field-label">รหัสผ่านปัจจุบัน</label><input class="field-input" id="editOldPw" type="password" placeholder="••••••••"></div>
+      <div class="field-group"><label class="field-label">รหัสผ่านใหม่</label><input class="field-input" id="editNewPw" type="password" placeholder="อย่างน้อย 8 ตัวอักษร"></div>
+      <div class="field-group"><label class="field-label">ยืนยันรหัสผ่านใหม่</label><input class="field-input" id="editConfirmPw" type="password" placeholder="••••••••"></div>
+      <button class="modal-btn primary" onclick="handleEditProfile()">💾 บันทึกการเปลี่ยนแปลง</button>
+    </div>
+  </div>
+</div>
+
+<!-- COMMENT MODAL -->
+<div class="modal-overlay" id="commentModal">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-top">
+      <button class="modal-close" onclick="closeModal('commentModal')">✕</button>
+      <div class="modal-icon">💬</div>
+      <div class="modal-title" id="commentModalTitle">ความคิดเห็น</div>
+    </div>
+    <div class="modal-body" style="padding:20px 24px 24px;">
+      <div id="commentList" style="display:flex;flex-direction:column;gap:10px;max-height:320px;overflow-y:auto;margin-bottom:12px;"></div>
+      <div id="commentLock" style="display:none;text-align:center;font-size:13px;color:var(--text-muted);padding:8px;">🔒 เข้าสู่ระบบเพื่อแสดงความคิดเห็น</div>
+      <div id="commentInputRow" style="display:none;gap:8px;display:flex;">
+        <input class="field-input" id="commentInput" placeholder="พิมพ์ความคิดเห็น..." style="flex:1;padding:9px 12px;" onkeydown="if(event.key==='Enter')submitComment()">
+        <button class="modal-btn primary" onclick="submitComment()" style="width:auto;padding:9px 18px;margin:0;">ส่ง</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<main>
+  <div class="page-header">
+    <div>
+      <div class="page-title">แผงควบคุมภาระงาน – ภาคเรียนที่ 1/2567</div>
+      <div class="page-subtitle" id="syncStatus">🔄 กำลังเชื่อมต่อ Firebase...</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%;">
+      <div class="search-wrap" style="flex:1;min-width:0;">
+        <span class="search-icon">🔍</span>
+        <input class="search-input" id="searchInput" placeholder="ค้นหาการบ้าน สอบ กิจกรรม..." oninput="window.handleSearch(this.value)">
+        <button class="search-clear" id="searchClear" onclick="window.clearSearch()" style="display:none">✕</button>
+      </div>
+      <div class="date-badge" id="dateBadge">📅 —</div>
+    </div>
+  </div>
+
+  <div class="stat-bar" id="statBar" style="grid-template-columns:repeat(3,1fr);">
+    <div class="stat-card" onclick="window.showPage('hw')">
+      <div class="stat-icon hw">📋</div>
+      <div>
+        <div class="stat-num" id="statHwNum">—</div>
+        <div class="stat-label">การบ้านที่ต้องส่ง</div>
+        <div class="stat-urgent" id="statHwUrgent" style="display:none">🔴 ด่วน</div>
+      </div>
+    </div>
+    <div class="stat-card" onclick="window.showPage('exam')">
+      <div class="stat-icon exam">📝</div>
+      <div>
+        <div class="stat-num" id="statExamNum">—</div>
+        <div class="stat-label">ข้อสอบที่กำลังจะมา</div>
+        <div class="stat-urgent" id="statExamUrgent" style="display:none">🔴 ใกล้สอบ</div>
+      </div>
+    </div>
+    <div class="stat-card" onclick="window.showPage('event')">
+      <div class="stat-icon event">🎉</div>
+      <div>
+        <div class="stat-num" id="statEventNum">—</div>
+        <div class="stat-label">กิจกรรมที่กำลังจะมา</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="dashboard-col-main">
+      <div class="card" id="sectionHw">
+        <div class="card-header">
+          <div class="card-header-icon" style="background:rgba(249,115,22,0.2);">📋</div>
+          <h2>การบ้านที่ต้องส่ง</h2>
+          <span class="card-header-count" id="hwCount">0</span>
+          <a class="card-view-all" onclick="window.showPage('hw')">ดูทั้งหมด →</a>
+          <button class="btn-add-card" id="btnAddHw" onclick="openAddModal('hw')" style="display:none">＋</button>
+        </div>
+        <div class="card-body" id="hwList"><div class="skeleton-item"><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div><div class="skeleton-line narrow skeleton"></div></div><div class="skeleton-item"><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div><div class="skeleton-line narrow skeleton"></div></div></div>
+      </div>
+      <div class="card" id="sectionExam">
+        <div class="card-header">
+          <div class="card-header-icon" style="background:rgba(239,68,68,0.2);">📝</div>
+          <h2>สอบที่กำลังจะถึง</h2>
+          <span class="card-header-count" id="examCount">0</span>
+          <a class="card-view-all" onclick="window.showPage('exam')">ดูทั้งหมด →</a>
+          <button class="btn-add-card" id="btnAddExam" onclick="openAddModal('exam')" style="display:none">＋</button>
+        </div>
+        <div class="card-body" id="examList"><div class="skeleton-item"><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div><div class="skeleton-line narrow skeleton"></div></div><div class="skeleton-item"><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div><div class="skeleton-line narrow skeleton"></div></div></div>
+      </div>
+    </div>
+    <div class="dashboard-col-side">
+      <div class="card" id="sectionEvent">
+        <div class="card-header">
+          <div class="card-header-icon" style="background:rgba(234,179,8,0.2);">🎉</div>
+          <h2>กิจกรรม</h2>
+          <span class="card-header-count" id="eventCount">0</span>
+          <a class="card-view-all" onclick="window.showPage('event')">ดูทั้งหมด →</a>
+          <button class="btn-add-card" id="btnAddEvent" onclick="openAddModal('event')" style="display:none">＋</button>
+        </div>
+        <div class="card-body" id="eventList"><div class="skeleton-item"><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div><div class="skeleton-line narrow skeleton"></div></div><div class="skeleton-item"><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div><div class="skeleton-line narrow skeleton"></div></div></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- HW PAGE -->
+<div id="hwPage" style="display:none;max-width:860px;margin:0 auto;padding:36px 32px 60px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+    <div style="font-family:'Kanit',sans-serif;font-size:24px;font-weight:700;color:var(--text-dark);">📋 การบ้านที่ต้องส่ง</div>
+    <div style="display:flex;gap:8px;"><button id="btnAddHwPage" class="tt-btn primary" onclick="openAddModal('hw')" style="display:none">＋ เพิ่มการบ้าน</button></div>
+  </div>
+  <div class="filter-bar">
+    <select class="filter-select" id="hwFilterSubject" onchange="window.applyHwFilter()"><option value="">📌 ทุกวิชา</option></select>
+    <select class="filter-select" id="hwFilterLevel" onchange="window.applyHwFilter()">
+      <option value="">⚡ ทุกระดับ</option><option value="urgent">🔴 ด่วน</option>
+      <option value="warn">🟠 ใกล้ครบ</option><option value="ok">🟢 ปกติ</option>
+    </select>
+    <select class="filter-select" id="hwSort" onchange="window.applyHwFilter()">
+      <option value="date_asc">📅 วันใกล้สุด</option><option value="date_desc">📅 วันไกลสุด</option>
+      <option value="level">⚡ ความด่วน</option>
+    </select>
+  </div>
+  <div class="card"><div class="card-body" id="hwListPage"><div class="skeleton-item"><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div></div></div></div>
+</div>
+
+<!-- EXAM PAGE -->
+<div id="examPage" style="display:none;max-width:860px;margin:0 auto;padding:36px 32px 60px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+    <div style="font-family:'Kanit',sans-serif;font-size:24px;font-weight:700;color:var(--text-dark);">📝 สอบที่กำลังจะถึง</div>
+    <div style="display:flex;gap:8px;"><button id="btnAddExamPage" class="tt-btn primary" onclick="openAddModal('exam')" style="display:none">＋ เพิ่มข้อสอบ</button></div>
+  </div>
+  <div class="filter-bar">
+    <select class="filter-select" id="examFilterSubject" onchange="window.applyExamFilter()"><option value="">📌 ทุกวิชา</option></select>
+    <select class="filter-select" id="examFilterLevel" onchange="window.applyExamFilter()">
+      <option value="">⚡ ทุกระดับ</option><option value="red">🔴 เร่งด่วน</option><option value="yellow">🟡 ปกติ</option>
+    </select>
+    <select class="filter-select" id="examSort" onchange="window.applyExamFilter()">
+      <option value="date_asc">📅 วันใกล้สุด</option><option value="date_desc">📅 วันไกลสุด</option>
+    </select>
+  </div>
+  <div class="card"><div class="card-body" id="examListPage"><div class="skeleton-item"><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div></div></div></div>
+</div>
+
+<!-- EVENT PAGE -->
+<div id="eventPage" style="display:none;max-width:860px;margin:0 auto;padding:36px 32px 60px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+    <div style="font-family:'Kanit',sans-serif;font-size:24px;font-weight:700;color:var(--text-dark);">🎉 กิจกรรม</div>
+    <div style="display:flex;gap:8px;"><button id="btnAddEventPage" class="tt-btn primary" onclick="openAddModal('event')" style="display:none">＋ เพิ่มกิจกรรม</button></div>
+  </div>
+  <div class="filter-bar">
+    <select class="filter-select" id="eventSort" onchange="window.applyEventFilter()">
+      <option value="date_asc">📅 วันใกล้สุด</option><option value="date_desc">📅 วันไกลสุด</option>
+    </select>
+  </div>
+  <div class="card"><div class="card-body" id="eventListPage"><div class="skeleton-item"><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div></div></div></div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal detail-modal">
+    <button class="modal-close" onclick="window.closeModal('detailModal')" style="position:absolute;top:14px;right:14px;z-index:10;background:rgba(255,255,255,0.2);color:white;border:none;width:30px;height:30px;border-radius:50%;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">✕</button>
+    <div id="detailHero" class="detail-hero">
+      <div id="detailBadge" class="detail-badge"></div>
+      <div id="detailTitle" class="detail-title"></div>
+      <div id="detailChips" class="detail-chips"></div>
+    </div>
+    <div id="detailCountdown" class="detail-countdown-row" style="display:none"></div>
+    <div class="detail-body" id="detailBody"></div>
+    <div class="detail-actions" id="detailActions"></div>
+  </div>
+</div>
+
+<!-- TIMETABLE PAGE -->
+<div id="timetablePage">
+  <div class="tt-toolbar">
+    <div class="tt-title">🗓️ ตารางเรียน</div>
+    <div class="tt-actions">
+      <div id="ttNowInfo" style="font-size:13px;color:var(--text-muted);display:none;"></div>
+      <button class="tt-btn secondary" id="ttSettingsBtn" onclick="window.openTTSettings()" style="display:none">⚙️ ตั้งค่าคาบ</button>
+      <button class="tt-btn primary" id="ttAddBtn" onclick="window.openTTAdd()" style="display:none">＋ เพิ่มวิชา</button>
+    </div>
+  </div>
+  <div class="tt-wrap"><div class="tt-scroll"><table class="tt-table" id="ttTable"><thead id="ttHead"></thead><tbody id="ttBody"></tbody></table></div></div>
+  <div class="tt-legend" id="ttLegend"></div>
+</div>
+
+<!-- TIMETABLE MODALS -->
+<div class="modal-overlay" id="ttModal">
+  <div class="modal" style="max-width:460px;">
+    <div class="modal-top">
+      <button class="modal-close" onclick="window.closeModal('ttModal')">✕</button>
+      <div class="modal-icon" id="ttModalIcon">📚</div>
+      <div class="modal-title" id="ttModalTitle">เพิ่มวิชา</div>
+      <div class="modal-subtitle" id="ttModalSub"></div>
+    </div>
+    <div class="modal-body" id="ttModalBody"></div>
+  </div>
+</div>
+<div class="modal-overlay" id="ttSettingsModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-top">
+      <button class="modal-close" onclick="window.closeModal('ttSettingsModal')">✕</button>
+      <div class="modal-icon">⚙️</div>
+      <div class="modal-title">ตั้งค่าตารางเรียน</div>
+      <div class="modal-subtitle">กำหนดจำนวนคาบและเวลา</div>
+    </div>
+    <div class="modal-body">
+      <div class="field-group"><label class="field-label">จำนวนคาบต่อวัน</label>
+        <select class="field-select" id="ttPeriodCount"><option value="6">6 คาบ</option><option value="7" selected>7 คาบ</option><option value="8">8 คาบ</option><option value="9">9 คาบ</option><option value="10">10 คาบ</option></select>
+      </div>
+      <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin:4px 0 -2px;">เวลาแต่ละคาบ (ไม่บังคับ)</div>
+      <div id="ttPeriodTimeList" style="display:flex;flex-direction:column;gap:8px;max-height:280px;overflow-y:auto;"></div>
+      <button class="modal-btn primary" onclick="window.saveTTSettings()">💾 บันทึกการตั้งค่า</button>
+    </div>
+  </div>
+</div>
+
+<!-- CALENDAR PAGE -->
+<div id="calendarPage" style="display:none;max-width:1320px;margin:0 auto;padding:36px 32px 60px;">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+    <div style="font-family:'Kanit',sans-serif;font-size:24px;font-weight:700;color:var(--text-dark);">📅 ปฏิทิน</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <button onclick="window.changeMonth(-1)" style="width:36px;height:36px;border-radius:50%;background:var(--card-bg);border:1.5px solid var(--border);cursor:pointer;font-size:16px;color:var(--text-dark);">◀</button>
+      <div id="calMonthLabel" style="font-family:'Kanit',sans-serif;font-size:18px;font-weight:700;color:var(--text-dark);min-width:150px;text-align:center;"></div>
+      <button onclick="window.changeMonth(1)" style="width:36px;height:36px;border-radius:50%;background:var(--card-bg);border:1.5px solid var(--border);cursor:pointer;font-size:16px;color:var(--text-dark);">▶</button>
+      <button onclick="window.goCalToday()" style="padding:8px 14px;border-radius:10px;background:var(--orange);color:white;border:none;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">วันนี้</button>
+    </div>
+  </div>
+  <div class="cal-filter-bar">
+    <span style="font-size:12px;font-weight:600;color:var(--text-muted);">แสดง:</span>
+    <div class="cal-filter-chip chip-hw active" id="chip-hw" onclick="window.toggleCalChip('hw')">📋 การบ้าน</div>
+    <div class="cal-filter-chip chip-exam active" id="chip-exam" onclick="window.toggleCalChip('exam')">📝 สอบ</div>
+    <div class="cal-filter-chip chip-event active" id="chip-event" onclick="window.toggleCalChip('event')">🎉 กิจกรรม</div>
+    <div class="cal-filter-chip chip-holiday active" id="chip-holiday" onclick="window.toggleCalChip('holiday')">🔴 วันหยุด</div>
+  </div>
+  <div style="background:var(--card-bg);border-radius:16px;box-shadow:var(--shadow);overflow:hidden;border:1px solid var(--border);">
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);background:var(--navy);">
+      <div class="cal-head">อา</div><div class="cal-head">จ</div><div class="cal-head">อ</div>
+      <div class="cal-head">พ</div><div class="cal-head">พฤ</div><div class="cal-head">ศ</div><div class="cal-head">ส</div>
+    </div>
+    <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);"></div>
+  </div>
+  <div class="cal-legend">
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:rgba(239,68,68,0.35);"></div>วันหยุดราชการ</div>
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:rgba(234,179,8,0.5);"></div>วันพิเศษ</div>
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--orange);"></div>การบ้าน</div>
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--red-accent);"></div>สอบ</div>
+    <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blue-accent);"></div>กิจกรรม</div>
+  </div>
+  <div id="calDayPanel" style="display:none;"></div>
+</div>
+
+<!-- HOLIDAY MODAL -->
+<div class="modal-overlay" id="holidayModal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-top">
+      <button class="modal-close" onclick="window.closeModal('holidayModal')">✕</button>
+      <div class="modal-icon" id="holidayModalIcon">🔴</div>
+      <div class="modal-title" id="holidayModalTitle">กำหนดสถานะวัน</div>
+    </div>
+    <div class="modal-body" id="holidayModalBody"></div>
+  </div>
+</div>
+
+<!-- PERSONNEL PAGE -->
+<div id="personnelPage">
+  <div class="personnel-toolbar">
+    <div class="personnel-title">👨‍🏫 บุคลากร</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <input class="field-input" id="personnelSearch" placeholder="🔍 ค้นหาชื่อ / วิชา..." oninput="window.filterPersonnel()" style="width:200px;padding:8px 12px;font-size:13px;">
+      <select class="filter-select" id="personnelFilterDept" onchange="window.filterPersonnel()"><option value="">🏫 ทุกแผนก</option></select>
+      <button id="btnAddPersonnel" class="tt-btn primary" onclick="window.openPersonnelModal()" style="display:none;">＋ เพิ่มบุคลากร</button>
+    </div>
+  </div>
+  <div class="personnel-grid" id="personnelGrid">
+    <div class="skeleton-item" style="height:160px;"><div class="skeleton-line wide skeleton" style="height:48px;width:48px;border-radius:50%;margin-bottom:12px;"></div><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div></div>
+    <div class="skeleton-item" style="height:160px;"><div class="skeleton-line wide skeleton" style="height:48px;width:48px;border-radius:50%;margin-bottom:12px;"></div><div class="skeleton-line wide skeleton"></div><div class="skeleton-line medium skeleton"></div></div>
+  </div>
+</div>
+
+<!-- PERSONNEL MODAL -->
+<div class="modal-overlay" id="personnelModal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-top">
+      <button class="modal-close" onclick="window.closeModal('personnelModal')">✕</button>
+      <div class="modal-icon" id="personnelModalIcon">👤</div>
+      <div class="modal-title" id="personnelModalTitle">เพิ่มบุคลากร</div>
+    </div>
+    <div class="modal-body" id="personnelModalBody"></div>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-panel" id="adminPanel">
+  <div class="admin-grid">
+    <div class="admin-card" id="adminUserCard">
+      <div class="admin-card-head"><span style="font-size:18px;">👥</span><h3>จัดการสิทธิ์สมาชิก</h3></div>
+      <div class="admin-card-body" id="adminUserList"><div class="log-empty">ไม่มีสมาชิก</div></div>
+    </div>
+    <div class="admin-card">
+      <div class="admin-card-head"><span style="font-size:18px;">📋</span><h3>Activity Log</h3></div>
+      <div class="log-wrap">
+        <table class="log-table">
+          <thead><tr><th>เวลา</th><th>ผู้ใช้</th><th>Action</th><th>รายละเอียด</th></tr></thead>
+          <tbody id="logTableBody"><tr><td colspan="4" class="log-empty">ยังไม่มีบันทึก</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// PERFORMANCE: หยุด intervals เมื่อ tab ซ่อน ประหยัด CPU
+document.addEventListener('visibilitychange', function(){
+  window._tabHidden = document.hidden;
+  if(!document.hidden && typeof renderAllLists === 'function') renderAllLists();
+});
+</script>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getFirestore,
+  collection, doc, addDoc, deleteDoc, onSnapshot,
+  query, orderBy, serverTimestamp, setDoc, getDoc, getDocs, updateDoc
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const OWNER_EMAIL = 'owner@classroom.com';
+const ROLE_LABELS = { owner:'👑 Owner', coowner:'⭐ Co-Owner', president:'🏅 หัวหน้าห้อง', vicepresident:'🎖️ รองหัวหน้าห้อง', member:'👤 Member', guest:'👁 Guest', academic:'📚 ฝ่ายการเรียน', activity:'🎯 ฝ่ายกิจกรรม', work:'🔧 ฝ่ายการงาน', monitor:'🚨 ฝ่ายสารวัตร' };
+const ROLE_CLASS  = { owner:'role-owner', coowner:'role-coowner', president:'role-president', vicepresident:'role-vicepresident', member:'role-member', guest:'role-guest', academic:'role-academic', activity:'role-activity', work:'role-work', monitor:'role-monitor' };
+const ROLE_ORDER  = ['owner','coowner','president','vicepresident','member','academic','activity','work','monitor','guest'];
+
+const PRESET_SUBJECTS = [
+  'คณิตศาสตร์','ฟิสิกส์','เคมี','ชีววิทยา','ภาษาไทย','ภาษาอังกฤษ',
+  'สังคมศึกษา','ประวัติศาสตร์','ศิลปะ','พลศึกษา','คอมพิวเตอร์','ดนตรี',
+  'ภาษาจีน','ภาษาญี่ปุ่น','วิทยาศาสตร์','เศรษฐศาสตร์','ภูมิศาสตร์'
+];
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDyUeEV2OF6CvHSFd4KR825_zWhmEG6khc",
+  authDomain: "classroom-dashboard-c3b64.firebaseapp.com",
+  projectId: "classroom-dashboard-c3b64",
+  storageBucket: "classroom-dashboard-c3b64.firebasestorage.app",
+  messagingSenderId: "917317657320",
+  appId: "1:917317657320:web:6048e4e3efd0a8bce5df5d"
+};
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// DATE
+(function(){
+  var d=new Date(),days=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'],
+  months=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  document.getElementById('dateBadge').textContent='📅 วัน'+days[d.getDay()]+'ที่ '+d.getDate()+' '+months[d.getMonth()]+' '+(d.getFullYear()+543);
+})();
+
+window.toggleTheme = function(){
+  var html=document.documentElement, isDark=html.getAttribute('data-theme')==='dark';
+  var newTheme = isDark ? 'light' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  document.getElementById('themeBtn').textContent = newTheme==='dark' ? '☀️' : '🌙';
+  localStorage.setItem('cls_theme', newTheme);
+};
+(function(){
+  var t=localStorage.getItem('cls_theme')||'light';
+  document.getElementById('themeBtn').textContent=t==='dark'?'☀️':'🌙';
+})();
+
+function getCurrentUser()   { return JSON.parse(localStorage.getItem('cls_current')||'null'); }
+function setCurrentUser(u)  { localStorage.setItem('cls_current',JSON.stringify(u)); }
+function clearCurrentUser() { localStorage.removeItem('cls_current'); }
+function canManage(r){ return r==='owner'||r==='coowner'; }
+function isDeptRole(r){ return ['academic','activity','work','monitor','president','vicepresident'].includes(r); }
+function isOwner(r)  { return r==='owner'; }
+
+var _tt;
+function showToast(msg,type){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast '+(type||'success');
+  clearTimeout(_tt);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>t.classList.add('show')));
+  _tt=setTimeout(()=>t.classList.remove('show'),3000);
+}
+window.showToast=showToast;
+
+window.toggleDropdown=()=>document.getElementById('profileWrapper').classList.toggle('open');
+window.openModal=function(id){
+  document.getElementById('profileWrapper').classList.remove('open');
+  ['loginError','signupError'].forEach(k=>{var e=document.getElementById(k);if(e){e.style.display='none';e.textContent='';}});
+  document.getElementById(id).classList.add('open');
+};
+window.closeModal=id=>document.getElementById(id).classList.remove('open');
+window.switchModal=(a,b)=>{window.closeModal(a);setTimeout(()=>window.openModal(b),150);};
+
+function parseThaiDate(str){
+  if(!str) return null;
+  var months={'ม.ค.':0,'ก.พ.':1,'มี.ค.':2,'เม.ย.':3,'พ.ค.':4,'มิ.ย.':5,'ก.ค.':6,'ส.ค.':7,'ก.ย.':8,'ต.ค.':9,'พ.ย.':10,'ธ.ค.':11};
+  var parts=str.trim().split(/\s+/);
+  if(parts.length<3) return null;
+  var d=parseInt(parts[0]),m=months[parts[1]],y=parseInt(parts[2]);
+  if(isNaN(d)||m===undefined||isNaN(y)) return null;
+  if(y < 100) y = y + 2500;
+  if(y > 2400) y = y - 543;
+  return new Date(y,m,d,23,59,59);
+}
+
+var _cdIntervals = [];
+function clearAllCountdowns(){ _cdIntervals.forEach(id => clearInterval(id)); _cdIntervals = []; }
+
+function buildCountdown(dateStr, level){
+  var target=parseThaiDate(dateStr);
+  if(!target) return null;
+  var wrap=document.createElement('div'); wrap.className='countdown';
+  var cdClass=level==='urgent'?'urgent-cd':level==='warn'?'warn-cd':'ok-cd';
+  function update(){
+    if(window._tabHidden) return;
+    var now=new Date(), diff=target-now;
+    if(diff<=0){ wrap.innerHTML='<span style="font-size:12px;color:var(--red-accent);font-weight:700">⛔ หมดเวลาแล้ว</span>'; return; }
+    var days=Math.floor(diff/86400000), hrs=Math.floor((diff%86400000)/3600000),
+        mins=Math.floor((diff%3600000)/60000), secs=Math.floor((diff%60000)/1000);
+    wrap.innerHTML=[
+      {n:days,l:'วัน'},{n:hrs,l:'ชั่วโมง'},{n:mins,l:'นาที'},{n:secs,l:'วินาที'}
+    ].map(x=>`<div class="cd-box ${cdClass}"><div class="cd-num">${String(x.n).padStart(2,'0')}</div><div class="cd-lbl">${x.l}</div></div>`).join('');
+  }
+  update();
+  var intervalId = setInterval(update, 1000);
+  _cdIntervals.push(intervalId);
+  return wrap;
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function makeActions(colName, id, data){
+  var wrap=document.createElement('div'); wrap.className='item-actions';
+  var u=getCurrentUser();
+  if(u&&canManage(u.role)){
+    var eb=document.createElement('button'); eb.className='btn-edit-item'; eb.textContent='✏️'; eb.title='แก้ไข';
+    eb.onclick=(e)=>{e.stopPropagation();openEditModal(colName,id,data);};
+    var db2=document.createElement('button'); db2.className='btn-delete-item'; db2.textContent='🗑️'; db2.title='ลบ';
+    db2.onclick=(e)=>{e.stopPropagation();window.deleteFirestoreItem(colName,id,data.name);};
+    wrap.appendChild(eb); wrap.appendChild(db2);
+  }
+  return wrap;
+}
+
+function buildHwEl(id,data){
+  var fm={urgent:'🚩',warn:'🚩',ok:'🏳️'}, bm={urgent:'red',warn:'orange',ok:'green'}, level=data.level||'ok';
+  var d=document.createElement('div'); d.className='hw-item '+level; d.dataset.id=id;
+  d.innerHTML='<div class="hw-top"><span class="hw-flag">'+(fm[level]||'🏳️')+'</span><span class="hw-name">'+esc(data.name)+'</span></div>'+
+    (data.subject?'<div class="item-subject-tag">📌 '+esc(data.subject)+'</div>':'')+
+    '<div class="hw-meta"><span class="hw-due">⏰ กำหนด '+esc(data.date)+'</span></div>'+
+    '<div class="hw-bar-track"><div class="hw-bar '+(bm[level]||'green')+'"></div></div>';
+  d.appendChild(makeActions('homework',id,data));
+  var cb=document.createElement('button');cb.className='btn-comment';cb.innerHTML='💬 คอมเมนต์';
+  cb.onclick=()=>window.openCommentModal('homework',id,data.name);
+  d.appendChild(cb);
+  var cd=buildCountdown(data.date,level); if(cd) d.appendChild(cd);
+  attachDetailClick(d,'homework',id,data);
+  return d;
+}
+
+function buildExamEl(id,data){
+  var level=data.level||'yellow';
+  var d=document.createElement('div'); d.className='exam-item '+level; d.dataset.id=id;
+  d.innerHTML='<div class="exam-name">'+esc(data.name)+'</div>'+
+    (data.subject?'<div class="item-subject-tag">📌 '+esc(data.subject)+'</div>':'')+
+    '<div class="exam-meta"><span class="exam-date">📅 '+esc(data.date)+'</span>'+(data.room?'<span class="exam-room">🏫 '+esc(data.room)+'</span>':'')+'</div>';
+  d.appendChild(makeActions('exams',id,data));
+  var cb2=document.createElement('button');cb2.className='btn-comment';cb2.innerHTML='💬 คอมเมนต์';
+  cb2.onclick=()=>window.openCommentModal('exams',id,data.name);
+  d.appendChild(cb2);
+  var cd=buildCountdown(data.date,level==='red'?'urgent':'warn'); if(cd) d.appendChild(cd);
+  attachDetailClick(d,'exams',id,data);
+  return d;
+}
+
+function buildEventEl(id,data){
+  var level=data.level||'blue';
+  var d=document.createElement('div'); d.className='event-item '+level; d.dataset.id=id;
+  d.innerHTML='<div class="event-name">'+esc(data.name)+'</div>'+(data.sub?'<div class="event-sub">'+esc(data.sub)+'</div>':'')+
+    '<div class="event-meta"><span class="event-date">📅 '+esc(data.date)+'</span></div>';
+  d.appendChild(makeActions('events',id,data));
+  var cb3=document.createElement('button');cb3.className='btn-comment';cb3.innerHTML='💬 คอมเมนต์';
+  cb3.onclick=()=>window.openCommentModal('events',id,data.name);
+  d.appendChild(cb3);
+  var cd=buildCountdown(data.date,'ok'); if(cd) d.appendChild(cd);
+  attachDetailClick(d,'events',id,data);
+  return d;
+}
+
+function buildEmptyState(icon,text,sub){
+  return '<div class="empty-state"><div class="empty-state-icon">'+icon+'</div><div class="empty-state-text">'+text+'</div><div class="empty-state-sub">'+sub+'</div></div>';
+}
+
+function updateStatBar(){
+  var hwEl=document.getElementById('statHwNum'); if(hwEl) hwEl.textContent=_allHw.length;
+  var hwCnt=document.getElementById('hwCount'); if(hwCnt) hwCnt.textContent=_allHw.length;
+  var urgentHw=_allHw.filter(d=>d.level==='urgent').length;
+  var hwUrgEl=document.getElementById('statHwUrgent');
+  if(hwUrgEl){ hwUrgEl.style.display=urgentHw?'':'none'; hwUrgEl.textContent='🔴 ด่วน '+urgentHw+' รายการ'; }
+  var exEl=document.getElementById('statExamNum'); if(exEl) exEl.textContent=_allExams.length;
+  var exCnt=document.getElementById('examCount'); if(exCnt) exCnt.textContent=_allExams.length;
+  var urgentEx=_allExams.filter(d=>d.level==='red').length;
+  var exUrgEl=document.getElementById('statExamUrgent');
+  if(exUrgEl){ exUrgEl.style.display=urgentEx?'':'none'; exUrgEl.textContent='🔴 ใกล้สอบ '+urgentEx+' รายการ'; }
+  var evEl=document.getElementById('statEventNum'); if(evEl) evEl.textContent=_allEvents.length;
+  var evCnt=document.getElementById('eventCount'); if(evCnt) evCnt.textContent=_allEvents.length;
+}
+
+function renderHwLists(){
+  var q=document.getElementById('searchInput');
+  if(q&&q.value.trim()){ window.handleSearch(q.value); return; }
+  var list=document.getElementById('hwList'); if(list){ list.innerHTML=''; if(!_allHw.length) list.innerHTML=buildEmptyState('📋','ยังไม่มีการบ้าน','Admin สามารถเพิ่มการบ้านได้เลย'); else _allHw.forEach(d=>list.appendChild(buildHwEl(d.id,d))); }
+  var listP=document.getElementById('hwListPage'); if(listP){ listP.innerHTML=''; if(!_allHw.length) listP.innerHTML=buildEmptyState('📋','ยังไม่มีการบ้าน','Admin สามารถเพิ่มการบ้านได้เลย'); else _allHw.forEach(d=>listP.appendChild(buildHwEl(d.id,d))); }
+  updateStatBar(); refreshSubjectDropdowns();
+}
+function renderExamLists(){
+  var q=document.getElementById('searchInput');
+  if(q&&q.value.trim()){ window.handleSearch(q.value); return; }
+  var list=document.getElementById('examList'); if(list){ list.innerHTML=''; if(!_allExams.length) list.innerHTML=buildEmptyState('📝','ยังไม่มีข้อสอบ','ยังไม่มีการสอบที่กำลังจะมาถึง'); else _allExams.forEach(d=>list.appendChild(buildExamEl(d.id,d))); }
+  var listP=document.getElementById('examListPage'); if(listP){ listP.innerHTML=''; if(!_allExams.length) listP.innerHTML=buildEmptyState('📝','ยังไม่มีข้อสอบ','ยังไม่มีการสอบที่กำลังจะมาถึง'); else _allExams.forEach(d=>listP.appendChild(buildExamEl(d.id,d))); }
+  updateStatBar();
+}
+function renderEventLists(){
+  var q=document.getElementById('searchInput');
+  if(q&&q.value.trim()){ window.handleSearch(q.value); return; }
+  var list=document.getElementById('eventList'); if(list){ list.innerHTML=''; if(!_allEvents.length) list.innerHTML=buildEmptyState('🎉','ยังไม่มีกิจกรรม','ยังไม่มีกิจกรรมที่กำลังจะมา'); else _allEvents.forEach(d=>list.appendChild(buildEventEl(d.id,d))); }
+  var listP=document.getElementById('eventListPage'); if(listP){ listP.innerHTML=''; if(!_allEvents.length) listP.innerHTML=buildEmptyState('🎉','ยังไม่มีกิจกรรม','ยังไม่มีกิจกรรมที่กำลังจะมา'); else _allEvents.forEach(d=>list.appendChild(buildEventEl(d.id,d))); }
+  updateStatBar();
+}
+
+function startRealtimeListeners(){
+  onSnapshot(query(collection(db,'homework'),orderBy('createdAt','asc')),snap=>{ _allHw=[]; snap.forEach(d=>{_allHw.push({id:d.id,...d.data()});}); renderHwLists(); });
+  onSnapshot(query(collection(db,'exams'),orderBy('createdAt','asc')),snap=>{ _allExams=[]; snap.forEach(d=>{_allExams.push({id:d.id,...d.data()});}); renderExamLists(); });
+  onSnapshot(query(collection(db,'events'),orderBy('createdAt','asc')),snap=>{ _allEvents=[]; snap.forEach(d=>{_allEvents.push({id:d.id,...d.data()});}); renderEventLists(); });
+  document.getElementById('syncStatus').textContent='🟢 เชื่อมต่อ Firebase แล้ว (Real-time sync)';
+}
+
+var _detailCol='', _detailId='', _detailData={};
+window.openDetailModal = function(colName, id, data){
+  _detailCol=colName; _detailId=id; _detailData=data;
+  var u=getCurrentUser(), canEdit=u&&canManage(u.role);
+  var isHw=colName==='homework', isExam=colName==='exams', isEvent=colName==='events';
+  var hero=document.getElementById('detailHero');
+  var heroClass='detail-hero ';
+  if(isHw) heroClass+='detail-hero-hw-'+(data.level||'ok');
+  if(isExam) heroClass+='detail-hero-exam';
+  if(isEvent) heroClass+='detail-hero-event-'+(data.level==='green'?'green':'blue');
+  hero.className=heroClass;
+  var badgeMap={homework:'📋 การบ้าน',exams:'📝 ข้อสอบ',events:'🎯 กิจกรรม'};
+  var levelLabel='';
+  if(isHw) levelLabel={urgent:' · 🔴 ด่วน',warn:' · 🟠 ใกล้ครบ',ok:' · 🟢 ปกติ'}[data.level||'ok']||'';
+  document.getElementById('detailBadge').textContent=badgeMap[colName]+levelLabel;
+  document.getElementById('detailTitle').textContent=data.name||'-';
+  var chips=[];
+  if(data.subject) chips.push('📌 '+data.subject);
+  if(data.date)    chips.push('📅 '+data.date);
+  if(data.room)    chips.push('🏫 '+data.room);
+  if(data.sub)     chips.push('🗒️ '+data.sub);
+  document.getElementById('detailChips').innerHTML=chips.map(c=>'<div class="detail-chip">'+esc(c)+'</div>').join('');
+  var cdRow=document.getElementById('detailCountdown');
+  if(data.date){
+    var parsed=parseThaiDate(data.date);
+    if(parsed){
+      var target=new Date(parsed.getFullYear(),parsed.getMonth(),parsed.getDate(),23,59,59);
+      var diffMs=target-Date.now(), isPast=diffMs<0, abs=Math.abs(diffMs);
+      var daysLeft=Math.floor(abs/864e5), hoursLeft=Math.floor((abs%864e5)/36e5), minsLeft=Math.floor((abs%36e5)/6e4);
+      cdRow.style.display='flex';
+      var overStyle=isPast?'background:#fef2f2;':'', numStyle=isPast?'color:#ef4444;':'';
+      cdRow.innerHTML='<div class="detail-cd-box" style="'+overStyle+'"><div class="detail-cd-num" style="'+numStyle+'">'+(isPast?'−':'')+daysLeft+'</div><div class="detail-cd-lbl">วัน</div></div>'+
+        '<div class="detail-cd-box" style="'+overStyle+'"><div class="detail-cd-num" style="'+numStyle+'">'+String(hoursLeft).padStart(2,'0')+'</div><div class="detail-cd-lbl">ชั่วโมง</div></div>'+
+        '<div class="detail-cd-box" style="'+overStyle+'"><div class="detail-cd-num" style="'+numStyle+'">'+String(minsLeft).padStart(2,'0')+'</div><div class="detail-cd-lbl">นาที</div></div>'+
+        '<div class="detail-cd-box" style="background:var(--item-bg)"><div class="detail-cd-num" style="font-size:14px;">'+(isPast?'⚠️ เกิน':'✅ เหลือ')+'</div><div class="detail-cd-lbl">กำหนด</div></div>';
+    } else { cdRow.style.display='none'; }
+  } else { cdRow.style.display='none'; }
+  document.getElementById('detailBody').innerHTML='';
+  var actions=document.getElementById('detailActions'); actions.innerHTML='';
+  var commentBtn=document.createElement('button'); commentBtn.className='detail-action-btn comment-btn'; commentBtn.innerHTML='💬 คอมเมนต์';
+  commentBtn.onclick=function(){ window.closeModal('detailModal'); window.openCommentModal(colName,id,data.name); };
+  actions.appendChild(commentBtn);
+  if(canEdit){
+    var editBtn=document.createElement('button'); editBtn.className='detail-action-btn edit'; editBtn.innerHTML='✏️ แก้ไข';
+    editBtn.onclick=function(){ window.closeModal('detailModal'); openEditModal(colName,id,data); };
+    actions.appendChild(editBtn);
+    var delBtn=document.createElement('button'); delBtn.className='detail-action-btn delete'; delBtn.innerHTML='🗑️ ลบ';
+    delBtn.onclick=function(){ if(!confirm('ลบ "'+data.name+'" ใช่ไหม?')) return; window.closeModal('detailModal'); window.deleteFirestoreItem(colName,id,data.name); };
+    actions.appendChild(delBtn);
+  }
+  window.openModal('detailModal');
+};
+
+function attachDetailClick(el,colName,id,data){
+  el.addEventListener('click',function(e){ if(e.target.closest('.item-actions,.btn-comment,.btn-edit-item,.btn-delete-item')) return; window.openDetailModal(colName,id,data); });
+}
+
+window.deleteFirestoreItem=async function(colName,id,name){
+  var label=name?'"'+name+'"':'รายการนี้';
+  if(!confirm('ลบ '+label+' ใช่ไหม?\nการกระทำนี้ไม่สามารถย้อนกลับได้')) return;
+  var u=getCurrentUser(); if(!u||!canManage(u.role)) return showToast('⛔ ไม่มีสิทธิ์ลบ','error');
+  try{ await deleteDoc(doc(db,colName,id)); await addLogFirestore('delete',colName+': '+(name||id)); showToast('🗑️ ลบแล้ว'); }
+  catch(e){ showToast('❌ ลบไม่สำเร็จ','error'); }
+};
+
+var _addType='', _editId='', _editCol='';
+window.openAddModal=function(type){
+  var u=getCurrentUser(); if(!u||!canManage(u.role)) return showToast('⛔ ไม่มีสิทธิ์','error');
+  _addType=type; _editId=''; _editCol='';
+  document.getElementById('addModalIcon').textContent={hw:'📋',exam:'📅',event:'🎉'}[type];
+  document.getElementById('addModalTitle').textContent={hw:'เพิ่มการบ้าน',exam:'เพิ่มข้อสอบ',event:'เพิ่มกิจกรรม'}[type];
+  buildAddForm(type,{}); window.openModal('addModal');
+};
+function openEditModal(colName,id,data){
+  var u=getCurrentUser(); if(!u||!canManage(u.role)) return showToast('⛔ ไม่มีสิทธิ์','error');
+  _editId=id; _editCol=colName;
+  var type={homework:'hw',exams:'exam',events:'event'}[colName]; _addType=type;
+  document.getElementById('addModalIcon').textContent='✏️';
+  document.getElementById('addModalTitle').textContent={hw:'แก้ไขการบ้าน',exam:'แก้ไขข้อสอบ',event:'แก้ไขกิจกรรม'}[type];
+  buildAddForm(type,data); window.openModal('addModal');
+}
+function buildSubjectSelect(currentVal){
+  var existing=[...new Set([..._allHw,..._allExams].map(d=>d.subject).filter(Boolean))];
+  var allSubjects=[...new Set([...PRESET_SUBJECTS,...existing])].sort((a,b)=>a.localeCompare(b,'th'));
+  var opts='<option value="">— เลือกวิชา —</option>';
+  allSubjects.forEach(s=>{ opts+='<option value="'+esc(s)+'"'+(s===currentVal?' selected':'')+'>'+esc(s)+'</option>'; });
+  opts+='<option value="__custom__">✏️ พิมพ์เอง...</option>';
+  return '<select class="field-select" id="ai_subject" onchange="window._onSubjectChange(this)">'+opts+'</select>'+
+         '<input class="field-input" id="ai_subject_custom" placeholder="พิมพ์ชื่อวิชา..." style="display:none;margin-top:8px;" value="'+esc(currentVal&&!PRESET_SUBJECTS.includes(currentVal)?currentVal:'')+'">';
+}
+window._onSubjectChange=function(sel){ var inp=document.getElementById('ai_subject_custom'); if(!inp) return; inp.style.display=sel.value==='__custom__'?'':'none'; if(sel.value==='__custom__') inp.focus(); };
+function getSubjectValue(){ var sel=document.getElementById('ai_subject'); if(!sel) return ''; if(sel.value==='__custom__') return (document.getElementById('ai_subject_custom')||{}).value?.trim()||''; return sel.value; }
+function buildAddForm(type,data){
+  var b=document.getElementById('addModalBody');
+  var btnLabel=_editId?'💾 บันทึกการแก้ไข':'เพิ่ม'+{hw:'การบ้าน',exam:'ข้อสอบ',event:'กิจกรรม'}[type];
+  var curSubj=data.subject||'';
+  if(type==='hw'){
+    b.innerHTML='<div class="field-group"><label class="field-label">ชื่อการบ้าน *</label><input class="field-input" id="ai_name" value="'+esc(data.name||'')+'" placeholder="เช่น รายงานบทที่ 6"></div>'+
+      '<div class="field-group"><label class="field-label">วิชา *</label>'+buildSubjectSelect(curSubj)+'</div>'+
+      '<div class="field-group"><label class="field-label">วันกำหนดส่ง *</label><input class="field-input" id="ai_date" type="date" value="'+thaiToInputDate(data.date||'')+'"></div>'+
+      '<div class="field-group"><label class="field-label">ระดับ</label><select class="field-select" id="ai_level"><option value="ok"'+(data.level==='ok'?' selected':'')+'>🟢 ปกติ</option><option value="warn"'+(data.level==='warn'?' selected':'')+'>🟠 ใกล้ครบ</option><option value="urgent"'+(data.level==='urgent'?' selected':'')+'>🔴 ด่วน</option></select></div>'+
+      '<button class="modal-btn primary" onclick="submitAdd()">'+btnLabel+'</button>';
+  } else if(type==='exam'){
+    b.innerHTML='<div class="field-group"><label class="field-label">ชื่อการสอบ *</label><input class="field-input" id="ai_name" value="'+esc(data.name||'')+'" placeholder="เช่น สอบกลางภาค: ฟิสิกส์"></div>'+
+      '<div class="field-group"><label class="field-label">วิชา *</label>'+buildSubjectSelect(curSubj)+'</div>'+
+      '<div class="field-group"><label class="field-label">วันที่สอบ *</label><input class="field-input" id="ai_date" type="date" value="'+thaiToInputDate(data.date||'')+'"></div>'+
+      '<div class="field-group"><label class="field-label">ห้องสอบ</label><input class="field-input" id="ai_room" value="'+esc(data.room||'')+'" placeholder="เช่น ห้อง 201"></div>'+
+      '<div class="field-group"><label class="field-label">ระดับ</label><select class="field-select" id="ai_level"><option value="red"'+(data.level==='red'?' selected':'')+'>🔴 เร่งด่วน</option><option value="yellow"'+(data.level==='yellow'?' selected':'')+'>🟡 ปกติ</option></select></div>'+
+      '<button class="modal-btn primary" onclick="submitAdd()">'+btnLabel+'</button>';
+  } else {
+    b.innerHTML='<div class="field-group"><label class="field-label">ชื่อกิจกรรม</label><input class="field-input" id="ai_name" value="'+esc(data.name||'')+'" placeholder="เช่น กีฬาสี รอบชิง"></div>'+
+      '<div class="field-group"><label class="field-label">วันที่จัด</label><input class="field-input" id="ai_date" type="date" value="'+thaiToInputDate(data.date||'')+'"></div>'+
+      '<div class="field-group"><label class="field-label">รายละเอียด</label><input class="field-input" id="ai_sub" value="'+esc(data.sub||'')+'" placeholder="เช่น สนามกีฬา"></div>'+
+      '<div class="field-group"><label class="field-label">สี</label><select class="field-select" id="ai_level"><option value="blue"'+(data.level==='blue'?' selected':'')+'>🔵 น้ำเงิน</option><option value="green"'+(data.level==='green'?' selected':'')+'>🟢 เขียว</option></select></div>'+
+      '<button class="modal-btn primary" onclick="submitAdd()">'+btnLabel+'</button>';
+  }
+}
+function g(id){ var e=document.getElementById(id); return e?e.value.trim():''; }
+window.submitAdd=async function(){
+  var name=g('ai_name'),dateRaw=g('ai_date'),subject=getSubjectValue(),room=g('ai_room'),sub=g('ai_sub'),level=g('ai_level');
+  var date=dateRaw?inputDateToThai(dateRaw):'';
+  if(!name||!date) return showToast('⚠️ กรุณากรอกข้อมูลให้ครบ','error');
+  if((_addType==='hw'||_addType==='exam')&&!subject) return showToast('⚠️ กรุณาเลือกวิชา','error');
+  var colMap={hw:'homework',exam:'exams',event:'events'};
+  var data={name,date,level};
+  if(subject) data.subject=subject; if(room) data.room=room; if(sub) data.sub=sub;
+  try{
+    if(_editId){ await updateDoc(doc(db,_editCol,_editId),data); await addLogFirestore('edit',{hw:'การบ้าน',exam:'สอบ',event:'กิจกรรม'}[_addType]+': '+name); showToast('✅ แก้ไขสำเร็จ ทุกคนจะเห็นทันที!'); }
+    else { data.createdAt=serverTimestamp(); await addDoc(collection(db,colMap[_addType]),data); await addLogFirestore('add',{hw:'การบ้าน',exam:'สอบ',event:'กิจกรรม'}[_addType]+': '+name); showToast('✅ เพิ่มข้อมูลสำเร็จ ทุกคนจะเห็นทันที!'); }
+    window.closeModal('addModal');
+  } catch(e){ showToast('❌ ไม่สำเร็จ: '+e.message,'error'); }
+};
+
+const PRESET_ROLES = {
+  // หัวหน้าห้อง / รองหัวหน้าห้อง
+  'lpk37560@loeipit.ac.th': 'president',
+  'lpk37608@loeipit.ac.th': 'vicepresident',
+  // ฝ่ายการเรียน
+  'lpk37390@loeipit.ac.th': 'academic',
+  'lpk37405@loeipit.ac.th': 'academic',
+  'lpk37403@loeipit.ac.th': 'academic',
+  'lpk37325@loeipit.ac.th': 'academic',
+  'lpk37343@loeipit.ac.th': 'academic',
+  // ฝ่ายการงาน
+  'lpk37321@loeipit.ac.th': 'work',
+  'lpk37569@loeipit.ac.th': 'work',
+  'lpk37580@loeipit.ac.th': 'work',
+  'lpk37640@loeipit.ac.th': 'work',
+  'lpk37441@loeipit.ac.th': 'work',
+  // ฝ่ายสารวัตร
+  'lpk37293@loeipit.ac.th': 'monitor',
+  'lpk37310@loeipit.ac.th': 'monitor',
+  'lpk37494@loeipit.ac.th': 'monitor',
+  'lpk37588@loeipit.ac.th': 'monitor',
+  'lpk37681@loeipit.ac.th': 'monitor',
+  'lpk37702@loeipit.ac.th': 'monitor',
+  // ฝ่ายกิจกรรม
+  'lpk40102@loeipit.ac.th': 'activity',
+  'lpk37445@loeipit.ac.th': 'activity',
+  'lpk37535@loeipit.ac.th': 'activity',
+  'lpk37559@loeipit.ac.th': 'activity',
+};
+// ── ดึง document แบบ robust: ลอง getDoc → retry สูงสุด 3 ครั้ง ──
+async function robustGetDoc(ref) {
+  var lastErr;
+  for (var attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 600 * attempt));
+      var snap = await getDoc(ref);
+      return snap;
+    } catch (e) {
+      lastErr = e;
+      // ถ้าไม่ใช่ offline error ให้หยุด retry ทันที
+      var msg = (e.message || '').toLowerCase();
+      if (!msg.includes('offline') && !msg.includes('unavailable') && !msg.includes('network')) throw e;
+    }
+  }
+  // fallback: ลอง getDocs จาก collection แทน
+  try {
+    var col = ref.parent, id = ref.id;
+    var qs = await getDocs(col);
+    var found = null;
+    qs.forEach(function(d){ if(d.id === id) found = d; });
+    if (found) return found;
+    // สร้าง snap-like object ที่ exists() = false
+    return { exists: function(){ return false; }, data: function(){ return null; } };
+  } catch (e2) {
+    throw lastErr || e2;
+  }
+}
+
+// ── เขียน document แบบ robust: retry สูงสุด 3 ครั้ง ──
+async function robustSetDoc(ref, data) {
+  var lastErr;
+  for (var attempt = 0; attempt < 3; attempt++) {
+    try {
+      if (attempt > 0) await new Promise(r => setTimeout(r, 600 * attempt));
+      await setDoc(ref, data);
+      return;
+    } catch (e) {
+      lastErr = e;
+      var msg = (e.message || '').toLowerCase();
+      if (!msg.includes('offline') && !msg.includes('unavailable') && !msg.includes('network')) throw e;
+    }
+  }
+  throw lastErr;
+}
+
+window.handleSignup=async function(){
+  var name=document.getElementById('signupName').value.trim(),
+      email=document.getElementById('signupEmail').value.trim().toLowerCase(),
+      pw=document.getElementById('signupPassword').value,
+      cf=document.getElementById('signupConfirm').value,
+      err=document.getElementById('signupError');
+  function E(m){err.textContent='⚠️ '+m;err.style.display='block';}
+  err.style.display='none';
+  if(!name) return E('กรุณากรอกชื่อ-นามสกุล');
+  if(!email.includes('@')) return E('กรุณากรอกอีเมลให้ถูกต้อง');
+  if(pw.length<8) return E('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร');
+  if(pw!==cf) return E('รหัสผ่านไม่ตรงกัน');
+  var btn=document.querySelector('#signupModal .modal-btn.primary');
+  if(btn){btn.disabled=true;btn.textContent='⏳ กำลังสมัคร...';}
+  try{
+    var ref=doc(db,'users',email);
+    var snap=await robustGetDoc(ref);
+    if(snap.exists()) return E('อีเมลนี้ถูกใช้งานแล้ว');
+    var role = PRESET_ROLES[email] || ((email===OWNER_EMAIL.trim().toLowerCase())?'owner':'member');
+    await robustSetDoc(ref,{name,email,password:pw,role,registeredAt:serverTimestamp()});
+    setCurrentUser({name,email,role}); window.closeModal('signupModal');
+    await addLogFirestore('signup',name+' ('+role+')'); updateUI(); showToast('🎉 สมัครสำเร็จ! ยินดีต้อนรับ '+name);
+  } catch(e){
+    var msg=(e.message||'');
+    if(msg.toLowerCase().includes('offline')||msg.toLowerCase().includes('unavailable'))
+      E('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+    else E('เกิดข้อผิดพลาด: '+msg);
+  } finally {
+    if(btn){btn.disabled=false;btn.innerHTML='🎉 สมัครสมาชิก';}
+  }
+};
+window.handleLogin=async function(){
+  var email=document.getElementById('loginEmail').value.trim().toLowerCase(),
+      pw=document.getElementById('loginPassword').value,
+      err=document.getElementById('loginError');
+  function E(m){err.textContent='⚠️ '+m;err.style.display='block';}
+  err.style.display='none';
+  if(!email) return E('กรุณากรอกอีเมล');
+  if(!pw) return E('กรุณากรอกรหัสผ่าน');
+  var btn=document.querySelector('#loginModal .modal-btn.primary');
+  if(btn){btn.disabled=true;btn.textContent='⏳ กำลังเข้าสู่ระบบ...';}
+  try{
+    var snap=await robustGetDoc(doc(db,'users',email));
+    if(!snap.exists()||snap.data().password!==pw) return E('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
+    var u=snap.data(); setCurrentUser({name:u.name,email:u.email,role:u.role}); window.closeModal('loginModal');
+    await addLogFirestore('login',u.name+' ['+ROLE_LABELS[u.role]+']'); updateUI(); showToast('🔓 เข้าสู่ระบบสำเร็จ! สวัสดี '+u.name);
+  } catch(e){
+    var msg=(e.message||'');
+    if(msg.toLowerCase().includes('offline')||msg.toLowerCase().includes('unavailable'))
+      E('ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่');
+    else E('เกิดข้อผิดพลาด: '+msg);
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='🔓 เข้าสู่ระบบ';}
+  }
+};
+window.handleLogout=async function(){
+  var u=getCurrentUser(); if(u) await addLogFirestore('logout',u.name);
+  clearCurrentUser(); document.getElementById('profileWrapper').classList.remove('open');
+  var panel=document.getElementById('adminPanel'); if(panel.classList.contains('visible')) window.toggleAdminPanel();
+  updateUI(); showToast('👋 ออกจากระบบแล้ว');
+};
+
+async function addLogFirestore(action,detail){
+  var u=getCurrentUser();
+  try{ await addDoc(collection(db,'logs'),{time:new Date().toLocaleString('th-TH'),user:u?u.name:'-',action,detail:detail||'',createdAt:serverTimestamp()}); }catch(e){}
+}
+
+window.toggleAdminPanel=function(){
+  var panel=document.getElementById('adminPanel'),btn=document.getElementById('navAdminBtn'),dash=document.querySelector('.dashboard-grid'),header=document.querySelector('.page-header');
+  var u=getCurrentUser();
+  if(panel.classList.contains('visible')){ panel.classList.remove('visible');dash.style.display='';header.style.display='';btn.classList.remove('active');btn.textContent='⚙️ จัดการ'; }
+  else {
+    panel.classList.add('visible');dash.style.display='none';header.style.display='none';btn.classList.add('active');btn.textContent='✕ ปิด';
+    // ฝ่ายต่างๆ เห็นเฉพาะ Log ไม่เห็น User Management
+    var userCard=document.getElementById('adminUserCard');
+    if(userCard) userCard.style.display=(u&&(isOwner(u.role)||canManage(u.role)))?'':'none';
+    renderAdminUserList();renderLog();
+  }
+};
+
+async function renderAdminUserList(){
+  var cur=getCurrentUser(),el=document.getElementById('adminUserList');
+  el.innerHTML='<div class="log-empty">⏳ กำลังโหลด...</div>';
+  try{
+    var snap=await getDocs(collection(db,'users'));
+    if(snap.empty){el.innerHTML='<div class="log-empty">ไม่มีสมาชิก</div>';return;}
+    el.innerHTML='';
+    snap.forEach(d=>{
+      var u=d.data(),email=d.id,isSelf=cur&&cur.email===email,av=u.name.charAt(0).toUpperCase(),b64=btoa(email);
+      var opts=ROLE_ORDER.map(r=>'<option value="'+r+'"'+(u.role===r?' selected':'')+'>'+ROLE_LABELS[r]+'</option>').join('');
+      var row=document.createElement('div'); row.className='user-row';
+      row.innerHTML='<div class="user-avatar-sm">'+av+'</div><div class="user-info"><div class="user-info-name">'+esc(u.name)+(isSelf?' <span style="font-size:10px;color:var(--orange)">(คุณ)</span>':'')+'</div><div class="user-info-email">'+esc(email)+'</div></div>'+
+        (isSelf?'<span class="role-badge '+ROLE_CLASS[u.role]+'">'+ROLE_LABELS[u.role]+'</span>':'<select class="role-select" id="rs_'+b64+'">'+opts+'</select><button class="btn-save-role" onclick="saveRole(\''+b64+'\',\''+esc(u.name)+'\')">บันทึก</button>');
+      el.appendChild(row);
+    });
+  }catch(e){el.innerHTML='<div class="log-empty">❌ โหลดไม่สำเร็จ</div>';}
+}
+window.saveRole=async function(b64,uname){
+  var email=atob(b64),sel=document.getElementById('rs_'+b64); if(!sel) return;
+  var newRole=sel.value;
+  try{
+    var snap=await getDoc(doc(db,'users',email)),old=snap.data().role;
+    if(old===newRole){showToast('Role ไม่ได้เปลี่ยน','error');return;}
+    await updateDoc(doc(db,'users',email),{role:newRole});
+    await addLogFirestore('role',uname+': '+ROLE_LABELS[old]+' → '+ROLE_LABELS[newRole]);
+    renderAdminUserList(); showToast('✅ เปลี่ยน Role เป็น '+ROLE_LABELS[newRole]+' แล้ว');
+  }catch(e){showToast('❌ ไม่สำเร็จ','error');}
+};
+async function renderLog(){
+  var tbody=document.getElementById('logTableBody');
+  tbody.innerHTML='<tr><td colspan="4" class="log-empty">⏳ กำลังโหลด...</td></tr>';
+  try{
+    var snap=await getDocs(query(collection(db,'logs'),orderBy('createdAt','desc')));
+    if(snap.empty){tbody.innerHTML='<tr><td colspan="4" class="log-empty">ยังไม่มีบันทึก</td></tr>';return;}
+    var meta={login:{l:'เข้าสู่ระบบ',c:'log-login'},logout:{l:'ออกจากระบบ',c:'log-logout'},signup:{l:'สมัครสมาชิก',c:'log-signup'},add:{l:'เพิ่มข้อมูล',c:'log-add'},delete:{l:'ลบข้อมูล',c:'log-delete'},role:{l:'เปลี่ยน Role',c:'log-role'},edit:{l:'แก้ไข',c:'log-edit'}};
+    var rows='';
+    snap.forEach(d=>{var l=d.data(),m=meta[l.action]||{l:l.action,c:'log-login'};rows+='<tr><td class="log-time">'+esc(l.time)+'</td><td style="font-size:13px;font-weight:600">'+esc(l.user)+'</td><td><span class="log-action '+m.c+'">'+m.l+'</span></td><td style="color:var(--text-muted);font-size:12px">'+esc(l.detail||'')+'</td></tr>';});
+    tbody.innerHTML=rows;
+  }catch(e){tbody.innerHTML='<tr><td colspan="4" class="log-empty">❌ โหลดไม่สำเร็จ</td></tr>';}
+}
+
+function updateUI(){
+  var user=getCurrentUser(),avatarEl=document.getElementById('navAvatar'),labelEl=document.getElementById('navLabel'),badgeEl=document.getElementById('navRoleBadge'),dropdown=document.getElementById('profileDropdown'),adminBtn=document.getElementById('navAdminBtn'),btnHw=document.getElementById('btnAddHw'),btnExam=document.getElementById('btnAddExam'),btnEvent=document.getElementById('btnAddEvent');
+  if(user){
+    var ini=user.name.charAt(0).toUpperCase(),cm=canManage(user.role),isDept=isDeptRole(user.role);
+    avatarEl.textContent=ini; labelEl.textContent=user.name.split(' ')[0];
+    badgeEl.innerHTML='<span class="role-badge '+(ROLE_CLASS[user.role]||'role-member')+'">'+( ROLE_LABELS[user.role]||user.role)+'</span>';
+    // ฝ่ายการเรียน เพิ่มการบ้าน+สอบได้, ฝ่ายกิจกรรม เพิ่มกิจกรรมได้, ฝ่ายการงาน/สารวัตร เพิ่มทุกอย่างได้
+    var canHw=cm||user.role==='academic'||user.role==='work'||user.role==='monitor'||user.role==='president'||user.role==='vicepresident';
+    var canExam=cm||user.role==='academic'||user.role==='work'||user.role==='monitor'||user.role==='president'||user.role==='vicepresident';
+    var canEvent=cm||user.role==='activity'||user.role==='work'||user.role==='monitor'||user.role==='president'||user.role==='vicepresident';
+    btnHw.style.display=canHw?'':'none';
+    btnExam.style.display=canExam?'':'none';
+    btnEvent.style.display=canEvent?'':'none';
+    adminBtn.style.display=(isOwner(user.role)||isDept)?'':'none';
+    var dh=document.createElement('div');dh.className='dropdown-header';
+    dh.innerHTML='<div class="dropdown-avatar-big" style="font-size:22px;font-weight:700">'+ini+'</div><div class="dropdown-title">'+esc(user.name)+'</div><div class="dropdown-sub">'+esc(user.email)+'</div><div style="margin-top:6px"><span class="role-badge '+(ROLE_CLASS[user.role]||'role-member')+'">'+(ROLE_LABELS[user.role]||user.role)+'</span></div>';
+    var dm=document.createElement('div');dm.className='dropdown-menu';
+    var ep=document.createElement('button');ep.className='dropdown-item';ep.innerHTML='<div class="di-icon" style="background:#fff7ed">✏️</div>แก้ไขโปรไฟล์';
+    ep.onclick=()=>{window.openEditProfile();document.getElementById('profileWrapper').classList.remove('open');};dm.appendChild(ep);
+    var dv0=document.createElement('div');dv0.className='dropdown-divider';dm.appendChild(dv0);
+    if(isOwner(user.role)){
+      var ab=document.createElement('button');ab.className='dropdown-item';ab.style.color='#6b21a8';ab.innerHTML='<div class="di-icon" style="background:#f3e8ff">⚙️</div>จัดการสมาชิก & Log';
+      ab.onclick=()=>{window.toggleAdminPanel();document.getElementById('profileWrapper').classList.remove('open');};dm.appendChild(ab);var dv=document.createElement('div');dv.className='dropdown-divider';dm.appendChild(dv);
+    } else if(isDept){
+      var ab2=document.createElement('button');ab2.className='dropdown-item';ab2.style.color='#0f766e';ab2.innerHTML='<div class="di-icon" style="background:#d1fae5">🗂️</div>แผงจัดการฝ่าย';
+      ab2.onclick=()=>{window.toggleAdminPanel();document.getElementById('profileWrapper').classList.remove('open');};dm.appendChild(ab2);var dv3=document.createElement('div');dv3.className='dropdown-divider';dm.appendChild(dv3);
+    }
+    var lb=document.createElement('button');lb.className='dropdown-item';lb.style.color='#64748b';lb.innerHTML='<div class="di-icon" style="background:#fff1f2">🚪</div>ออกจากระบบ';lb.onclick=window.handleLogout;dm.appendChild(lb);
+    dropdown.innerHTML='';dropdown.appendChild(dh);dropdown.appendChild(dm);
+  } else {
+    avatarEl.textContent='👤';labelEl.textContent='โปรไฟล์';badgeEl.innerHTML='';
+    btnHw.style.display=btnExam.style.display=btnEvent.style.display=adminBtn.style.display='none';
+    var dh2=document.createElement('div');dh2.className='dropdown-header';dh2.innerHTML='<div class="dropdown-avatar-big">👤</div><div class="dropdown-title">ยินดีต้อนรับ!</div><div class="dropdown-sub">เข้าสู่ระบบเพื่อใช้งาน</div>';
+    var dm2=document.createElement('div');dm2.className='dropdown-menu';
+    var li=document.createElement('button');li.className='dropdown-item login';li.innerHTML='<div class="di-icon">🔑</div>เข้าสู่ระบบ';li.onclick=()=>window.openModal('loginModal');
+    var dv2=document.createElement('div');dv2.className='dropdown-divider';
+    var si=document.createElement('button');si.className='dropdown-item signup';si.innerHTML='<div class="di-icon">✏️</div>สมัครสมาชิก';si.onclick=()=>window.openModal('signupModal');
+    dm2.appendChild(li);dm2.appendChild(dv2);dm2.appendChild(si);
+    dropdown.innerHTML='';dropdown.appendChild(dh2);dropdown.appendChild(dm2);
+  }
+}
+
+document.addEventListener('click',e=>{var w=document.getElementById('profileWrapper');if(!w.contains(e.target))w.classList.remove('open');});
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
+
+function thaiToInputDate(str){ if(!str) return ''; var t=parseThaiDate(str); if(!t) return ''; var y=t.getFullYear(),m=String(t.getMonth()+1).padStart(2,'0'),d=String(t.getDate()).padStart(2,'0'); return y+'-'+m+'-'+d; }
+function inputDateToThai(str){ if(!str) return ''; var parts=str.split('-'); if(parts.length<3) return str; var months=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; var y=parseInt(parts[0])+543,m=parseInt(parts[1]),d=parseInt(parts[2]); return d+' '+months[m]+' '+(y-2500<100?String(y-2500).padStart(2,'0'):y); }
+
+window.openEditProfile=async function(){
+  var u=getCurrentUser(); if(!u) return;
+  document.getElementById('editName').value=u.name; document.getElementById('editOldPw').value=''; document.getElementById('editNewPw').value=''; document.getElementById('editConfirmPw').value='';
+  document.getElementById('editProfileError').style.display='none'; document.getElementById('editProfileSuccess').style.display='none';
+  window.openModal('editProfileModal');
+};
+window.handleEditProfile=async function(){
+  var u=getCurrentUser(); if(!u) return;
+  var name=document.getElementById('editName').value.trim(),oldPw=document.getElementById('editOldPw').value,newPw=document.getElementById('editNewPw').value,cfPw=document.getElementById('editConfirmPw').value;
+  var errEl=document.getElementById('editProfileError'),sucEl=document.getElementById('editProfileSuccess');
+  function E(m){errEl.textContent='⚠️ '+m;errEl.style.display='block';sucEl.style.display='none';}
+  if(!name) return E('กรุณากรอกชื่อ-นามสกุล');
+  try{
+    var snap=await getDoc(doc(db,'users',u.email)),userData=snap.data(),updates={name};
+    if(oldPw||newPw||cfPw){ if(!oldPw) return E('กรุณากรอกรหัสผ่านปัจจุบัน'); if(userData.password!==oldPw) return E('รหัสผ่านปัจจุบันไม่ถูกต้อง'); if(newPw.length<8) return E('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร'); if(newPw!==cfPw) return E('รหัสผ่านใหม่ไม่ตรงกัน'); updates.password=newPw; }
+    await updateDoc(doc(db,'users',u.email),updates); setCurrentUser({...u,name}); await addLogFirestore('edit','แก้ไขโปรไฟล์: '+name);
+    errEl.style.display='none'; sucEl.textContent='✅ บันทึกสำเร็จแล้ว!'; sucEl.style.display='block'; updateUI();
+    setTimeout(()=>window.closeModal('editProfileModal'),1200);
+  } catch(e){ E('เกิดข้อผิดพลาด: '+e.message); }
+};
+
+var _commentDocId='',_commentCol='';
+window.openCommentModal=async function(colName,id,name){
+  _commentDocId=id; _commentCol=colName; document.getElementById('commentModalTitle').textContent='💬 '+name;
+  var u=getCurrentUser(); document.getElementById('commentLock').style.display=u?'none':'block'; document.getElementById('commentInputRow').style.display=u?'flex':'none'; document.getElementById('commentInput').value='';
+  window.openModal('commentModal'); loadComments();
+};
+async function loadComments(){
+  var list=document.getElementById('commentList'); list.innerHTML='<div class="comment-empty">⏳ กำลังโหลด...</div>';
+  var u=getCurrentUser();
+  try{
+    var snap=await getDocs(query(collection(db,_commentCol,_commentDocId,'comments'),orderBy('createdAt','asc')));
+    if(snap.empty){list.innerHTML='<div class="comment-empty">💬 ยังไม่มีความคิดเห็น</div>';return;}
+    list.innerHTML='';
+    snap.forEach(d=>{
+      var c=d.data(),isOwn=u&&u.name===c.author;
+      var el=document.createElement('div'); el.className='comment-bubble'+(isOwn?' comment-own':'');
+      if(isOwn){ var delBtn=document.createElement('button');delBtn.className='comment-del';delBtn.textContent='✕';delBtn.onclick=(function(cid){return function(){window.deleteComment(cid);};})(d.id);el.appendChild(delBtn); }
+      var authorEl=document.createElement('div');authorEl.className='comment-author';authorEl.textContent=c.author;
+      var textEl=document.createElement('div');textEl.className='comment-text';textEl.textContent=c.text;
+      var timeEl=document.createElement('div');timeEl.className='comment-time';timeEl.textContent=c.time||'';
+      el.appendChild(authorEl);el.appendChild(textEl);el.appendChild(timeEl); list.appendChild(el);
+    });
+    list.scrollTop=list.scrollHeight;
+  } catch(e){ list.innerHTML='<div class="comment-empty">❌ โหลดไม่สำเร็จ</div>'; }
+}
+window.submitComment=async function(){
+  var u=getCurrentUser(); if(!u) return;
+  var inp=document.getElementById('commentInput'),txt=inp.value.trim(); if(!txt) return;
+  try{ await addDoc(collection(db,_commentCol,_commentDocId,'comments'),{author:u.name,text:txt,time:new Date().toLocaleString('th-TH'),createdAt:serverTimestamp()}); inp.value=''; loadComments(); }
+  catch(e){ showToast('❌ ส่งไม่สำเร็จ','error'); }
+};
+window.deleteComment=async function(commentId){
+  var u=getCurrentUser(); if(!u) return;
+  try{ await deleteDoc(doc(db,_commentCol,_commentDocId,'comments',commentId)); loadComments(); }
+  catch(e){ showToast('❌ ลบไม่สำเร็จ','error'); }
+};
+
+var _allHw=[],_allExams=[],_allEvents=[];
+var _calYear=new Date().getFullYear(),_calMonth=new Date().getMonth();
+
+// ── LAZY LOAD: track ว่า listener ไหนเปิดแล้ว ──
+var _lazyStarted={personnel:false,holiday:false,timetable:false};
+function ensurePersonnelData(){ if(_lazyStarted.personnel) return; _lazyStarted.personnel=true; startPersonnelListener(); }
+function ensureHolidayData(){ if(_lazyStarted.holiday) return; _lazyStarted.holiday=true; startHolidayListener(); }
+async function ensureTimetableData(){ if(_lazyStarted.timetable) return; _lazyStarted.timetable=true; await loadTimetable(); renderTimetable(); }
+
+window.showPage=function(page){
+  var pages=['dashboard','calendar','timetable','hw','exam','event','personnel'];
+  var elMap={dashboard:document.querySelector('.dashboard-grid'),calendar:document.getElementById('calendarPage'),timetable:document.getElementById('timetablePage'),hw:document.getElementById('hwPage'),exam:document.getElementById('examPage'),event:document.getElementById('eventPage'),personnel:document.getElementById('personnelPage')};
+  var header=document.querySelector('.page-header'),adminPanel=document.getElementById('adminPanel');
+  if(adminPanel.classList.contains('visible')) window.toggleAdminPanel();
+  pages.forEach(p=>{ if(elMap[p]) elMap[p].style.display='none'; });
+  header.style.display=page==='dashboard'?'':'none';
+  if(elMap[page]) elMap[page].style.display='block';
+  var u=getCurrentUser(),canEdit=u&&canManage(u.role);
+  var addBtnIds={hw:'btnAddHwPage',exam:'btnAddExamPage',event:'btnAddEventPage'};
+  Object.values(addBtnIds).forEach(id=>{var b=document.getElementById(id);if(b)b.style.display='none';});
+  if(canEdit&&addBtnIds[page]){var b=document.getElementById(addBtnIds[page]);if(b)b.style.display='';}
+  var pb=document.getElementById('btnAddPersonnel'); if(pb) pb.style.display=(page==='personnel'&&canEdit)?'':'none';
+  document.querySelectorAll('.nav-link').forEach(l=>l.classList.remove('active'));
+  var navIdMap={dashboard:'navHome',calendar:'navCalendar',timetable:'navTimetable',hw:'navHw',exam:'navExam',event:'navEvent',personnel:'navPersonnel'};
+  var activeId=navIdMap[page]; if(activeId){var el=document.getElementById(activeId);if(el)el.classList.add('active');}
+  // LAZY LOAD
+  if(page==='calendar'){ensureHolidayData();renderCalendar();}
+  if(page==='timetable') ensureTimetableData();
+  if(page==='personnel') ensurePersonnelData();
+};
+
+document.querySelectorAll('.nav-link[data-page]').forEach(function(link){
+  link.addEventListener('click',function(){ var page=this.getAttribute('data-page'); if(page) window.showPage(page); if(this.getAttribute('data-close-menu')) window.closeMobileMenu(); });
+});
+
+var THAI_MONTHS=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+var THAI_DAYS_SHORT=['อา','จ','อ','พ','พฤ','ศ','ส'];
+var _selectedCalDay=null,_calFilters={hw:true,exam:true,event:true,holiday:true},_allHolidays=[];
+
+function startHolidayListener(){
+  onSnapshot(collection(db,'holidays'),snap=>{ _allHolidays=[]; snap.forEach(d=>_allHolidays.push({id:d.id,...d.data()})); renderCalendar(); if(_selectedCalDay) renderCalDayPanel(_selectedCalDay.d,_selectedCalDay.m,_selectedCalDay.y); });
+}
+function getHolidayForDate(y,m,d){ var key=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'); return _allHolidays.find(h=>h.dateKey===key)||null; }
+window.toggleCalChip=function(type){ _calFilters[type]=!_calFilters[type]; var chip=document.getElementById('chip-'+type); if(chip) chip.classList.toggle('active',_calFilters[type]); renderCalendar(); if(_selectedCalDay) renderCalDayPanel(_selectedCalDay.d,_selectedCalDay.m,_selectedCalDay.y); };
+window.changeMonth=function(dir){ _calMonth+=dir; if(_calMonth>11){_calMonth=0;_calYear++;} if(_calMonth<0){_calMonth=11;_calYear--;} _selectedCalDay=null; renderCalendar(); };
+window.goCalToday=function(){ var now=new Date(); _calYear=now.getFullYear();_calMonth=now.getMonth(); _selectedCalDay={d:now.getDate(),m:now.getMonth(),y:now.getFullYear()}; renderCalendar(); renderCalDayPanel(_selectedCalDay.d,_selectedCalDay.m,_selectedCalDay.y); };
+function getItemsForDate(d,m,y){ var result=[]; function matchDate(dateStr){var t=parseThaiDate(dateStr);if(!t)return false;return t.getDate()===d&&t.getMonth()===m&&t.getFullYear()===y;} if(_calFilters.hw) _allHw.forEach(i=>{if(matchDate(i.date))result.push({type:'hw',name:i.name,subject:i.subject||'',id:i.id,data:i});}); if(_calFilters.exam) _allExams.forEach(i=>{if(matchDate(i.date))result.push({type:'exam',name:i.name,subject:i.subject||'',id:i.id,data:i});}); if(_calFilters.event) _allEvents.forEach(i=>{if(matchDate(i.date))result.push({type:'event',name:i.name,subject:i.sub||'',id:i.id,data:i});}); return result; }
+
+function renderCalDayPanel(d,m,y){
+  var panel=document.getElementById('calDayPanel');
+  var items=getItemsForDate(d,m,y),holiday=_calFilters.holiday?getHolidayForDate(_calYear,_calMonth,d):null;
+  var dateLabel=d+' '+THAI_MONTHS[m]+' '+(y+543),dayName=THAI_DAYS_SHORT[new Date(y,m,d).getDay()];
+  var u=getCurrentUser(),canEdit=u&&canManage(u.role);
+  window._calPanelDay={y:y,m:m,d:d,holiday:holiday};
+  var headerBg=holiday?(holiday.type==='holiday'?'background:#991b1b;':'background:#92400e;'):'';
+  var html='<div class="cal-day-panel"><div class="cal-day-panel-header" style="'+headerBg+'"><div><div class="cal-day-panel-title">วัน'+dayName+' '+dateLabel+'</div>'+(holiday?'<div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:2px;">'+(holiday.type==='holiday'?'🔴':'🟡')+' '+esc(holiday.name)+'</div>':'')+'</div><div style="display:flex;gap:6px;align-items:center;">'+(canEdit?'<button class="cal-day-panel-close" style="background:rgba(255,255,255,0.2);" onclick="window._openHolidayModalFromPanel()">📅</button>':'')+'<button class="cal-day-panel-close" onclick="window.closeCalPanel()">✕</button></div></div><div class="cal-day-panel-body">';
+  if(holiday){var hClass=holiday.type==='holiday'?'holiday-item':'special-item',hDot=holiday.type==='holiday'?'holiday':'special',hType=holiday.type==='holiday'?'วันหยุด':'วันพิเศษ';html+='<div class="cal-panel-item '+hClass+'"><div class="cal-panel-dot '+hDot+'"></div><div class="cal-panel-name">'+esc(holiday.name)+'</div><span class="cal-panel-type '+hDot+'">'+hType+'</span></div>';}
+  if(!items.length&&!holiday) html+='<div class="cal-day-panel-empty">📭 ไม่มีรายการในวันนี้</div>';
+  if(canEdit){ var preDate=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'); window._calPreDate=preDate; html+='<button class="cal-add-btn" onclick="window.openAddFromCal(window._calPreDate)">＋ เพิ่มรายการในวันนี้</button><button class="cal-add-holiday-btn" onclick="window._openHolidayModalFromPanel()">📅 '+(holiday?'แก้ไข / ลบสถานะวัน':'กำหนดสถานะวัน')+'</button>'; }
+  html+='</div></div>';
+  panel.innerHTML=html;
+  if(items.length){ var body=panel.querySelector('.cal-day-panel-body'),typeLabel={hw:'การบ้าน',exam:'สอบ',event:'กิจกรรม'}; items.forEach(function(item){ var row=document.createElement('div');row.className='cal-panel-item';row.innerHTML='<div class="cal-panel-dot '+item.type+'"></div><div style="flex:1;min-width:0;"><div class="cal-panel-name">'+esc(item.name)+'</div>'+(item.subject?'<div class="cal-panel-subject">📌 '+esc(item.subject)+'</div>':'')+'</div><span class="cal-panel-type '+item.type+'">'+typeLabel[item.type]+'</span>';row.addEventListener('click',(function(t,id){return function(){window.openCalPanelItem(t,id);};})(item.type,item.id));var addBtn=body.querySelector('.cal-add-btn');if(addBtn)body.insertBefore(row,addBtn);else body.appendChild(row); }); }
+  panel.style.display='block'; panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+window._openHolidayModalFromPanel=function(){ var info=window._calPanelDay;if(!info)return;var h=info.holiday;window.openHolidayModal(info.y,info.m,info.d,h?h.name:'',h?h.type:'holiday',h?h.id:''); };
+window.closeCalPanel=function(){ document.getElementById('calDayPanel').style.display='none';_selectedCalDay=null;document.querySelectorAll('.cal-day.selected').forEach(c=>c.classList.remove('selected')); };
+window.openCalPanelItem=function(type,id){ var colMap={hw:'homework',exam:'exams',event:'events'};var arr={hw:_allHw,exam:_allExams,event:_allEvents}[type];var item=arr.find(x=>x.id===id);if(!item)return;window.openDetailModal(colMap[type],id,item); };
+window.openAddFromCal=function(preDate){ window.openAddModal('hw'); setTimeout(function(){var di=document.getElementById('ai_date');if(di)di.value=preDate;},60); };
+window.openHolidayModal=function(y,m,d,existingName,existingType,existingId){ var u=getCurrentUser();if(!u||!canManage(u.role))return;var dateLabel=d+' '+THAI_MONTHS[m]+' '+(y+543),dateKey=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');document.getElementById('holidayModalIcon').textContent=existingId?'✏️':'📅';document.getElementById('holidayModalTitle').textContent='กำหนดสถานะวัน: '+dateLabel;window._holidayEditData={dateKey:dateKey,existingId:existingId};document.getElementById('holidayModalBody').innerHTML='<div class="field-group"><label class="field-label">สถานะวัน</label><select class="field-select" id="hm_type"><option value="holiday"'+(existingType==='holiday'?' selected':'')+'>🔴 วันหยุดราชการ</option><option value="special"'+(existingType==='special'?' selected':'')+'>🟡 วันพิเศษ / กิจกรรมพิเศษ</option></select></div><div class="field-group"><label class="field-label">ชื่อวันหยุด / รายละเอียด *</label><input class="field-input" id="hm_name" value="'+esc(existingName)+'" placeholder="เช่น วันชาติ, วันปฐมนิเทศ"></div><button class="modal-btn primary" onclick="window.submitHolidayFromModal()">💾 บันทึก</button>'+(existingId?'<button class="modal-btn" style="background:#fff1f2;color:#be123c;border:1px solid #fecdd3;" onclick="window.deleteHolidayFromModal()">🗑️ ลบสถานะวันนี้</button>':'');window.openModal('holidayModal'); };
+window.submitHolidayFromModal=function(){var d=window._holidayEditData||{};window.submitHoliday(d.dateKey,d.existingId||'');};
+window.deleteHolidayFromModal=function(){var d=window._holidayEditData||{};if(d.existingId)window.deleteHoliday(d.existingId);};
+window.submitHoliday=async function(dateKey,existingId){ var u=getCurrentUser();if(!u||!canManage(u.role))return showToast('⛔ ไม่มีสิทธิ์','error');var name=(document.getElementById('hm_name')||{}).value?.trim()||'',type=(document.getElementById('hm_type')||{}).value||'holiday';if(!name)return showToast('⚠️ กรุณาใส่ชื่อวัน','error');try{if(existingId){await updateDoc(doc(db,'holidays',existingId),{name,type});}else{await addDoc(collection(db,'holidays'),{dateKey,name,type,createdAt:serverTimestamp()});}showToast('✅ บันทึกสถานะวันแล้ว');window.closeModal('holidayModal');}catch(e){showToast('❌ ไม่สำเร็จ: '+e.message,'error');} };
+window.deleteHoliday=async function(id){ if(!confirm('ลบสถานะวันนี้ออก?'))return;try{await deleteDoc(doc(db,'holidays',id));showToast('🗑️ ลบสถานะวันแล้ว');window.closeModal('holidayModal');}catch(e){showToast('❌ ลบไม่สำเร็จ','error');} };
+
+function renderCalendar(){
+  var label=document.getElementById('calMonthLabel'); label.textContent=THAI_MONTHS[_calMonth]+' '+(_calYear+543);
+  var grid=document.getElementById('calGrid'); grid.innerHTML='';
+  var firstDay=new Date(_calYear,_calMonth,1).getDay(),daysInMonth=new Date(_calYear,_calMonth+1,0).getDate(),daysInPrev=new Date(_calYear,_calMonth,0).getDate(),today=new Date();
+  for(var i=firstDay-1;i>=0;i--){var cell=document.createElement('div');cell.className='cal-day other-month';cell.innerHTML='<div class="cal-day-num">'+(daysInPrev-i)+'</div>';grid.appendChild(cell);}
+  for(var d=1;d<=daysInMonth;d++){(function(day){var isToday=day===today.getDate()&&_calMonth===today.getMonth()&&_calYear===today.getFullYear(),isSelected=_selectedCalDay&&_selectedCalDay.d===day&&_selectedCalDay.m===_calMonth&&_selectedCalDay.y===_calYear,holiday=_calFilters.holiday?getHolidayForDate(_calYear,_calMonth,day):null;var cls='cal-day';if(isToday)cls+=' today';if(isSelected)cls+=' selected';if(holiday)cls+=(holiday.type==='holiday'?' day-holiday':' day-special');var cell=document.createElement('div');cell.className=cls;var numDiv=document.createElement('div');numDiv.className='cal-day-num';numDiv.textContent=day;cell.appendChild(numDiv);if(holiday){var tag=document.createElement('div');tag.className=holiday.type==='holiday'?'cal-holiday-tag':'cal-special-tag';tag.textContent=(holiday.type==='holiday'?'🔴 ':'🟡 ')+holiday.name;cell.appendChild(tag);}var items=getItemsForDate(day,_calMonth,_calYear);items.slice(0,holiday?2:3).forEach(function(item){var dot=document.createElement('div');dot.className='cal-dot '+item.type;dot.textContent=(item.type==='hw'?'📋':item.type==='exam'?'📝':'🎉')+' '+item.name;cell.appendChild(dot);});var maxShown=holiday?2:3;if(items.length>maxShown){var more=document.createElement('div');more.style.cssText='font-size:10px;color:var(--text-muted);padding:1px 4px;';more.textContent='+'+(items.length-maxShown)+' อื่นๆ';cell.appendChild(more);}cell.addEventListener('click',function(){if(_selectedCalDay&&_selectedCalDay.d===day&&_selectedCalDay.m===_calMonth&&_selectedCalDay.y===_calYear){window.closeCalPanel();}else{_selectedCalDay={d:day,m:_calMonth,y:_calYear};document.querySelectorAll('.cal-day.selected').forEach(c=>c.classList.remove('selected'));cell.classList.add('selected');renderCalDayPanel(day,_calMonth,_calYear);}});grid.appendChild(cell);})(d);}
+  var total=firstDay+daysInMonth,remaining=(7-total%7)%7;
+  for(var n=1;n<=remaining;n++){var cell=document.createElement('div');cell.className='cal-day other-month';cell.innerHTML='<div class="cal-day-num">'+n+'</div>';grid.appendChild(cell);}
+  if(_selectedCalDay&&_selectedCalDay.m===_calMonth&&_selectedCalDay.y===_calYear){renderCalDayPanel(_selectedCalDay.d,_selectedCalDay.m,_selectedCalDay.y);}else{document.getElementById('calDayPanel').style.display='none';}
+}
+
+function sortByDate(arr,dir){ return [...arr].sort((a,b)=>{var da=parseThaiDate(a.date),db=parseThaiDate(b.date);if(!da&&!db)return 0;if(!da)return 1;if(!db)return -1;return dir==='asc'?da-db:db-da;}); }
+function levelOrder(l){ return{urgent:0,red:0,warn:1,yellow:1,ok:2,blue:2,green:3}[l]??2; }
+function refreshSubjectDropdowns(){ var hwSubjects=[...new Set(_allHw.map(d=>d.subject).filter(Boolean))],exSubjects=[...new Set(_allExams.map(d=>d.subject).filter(Boolean))];function fill(selId,subjects){var sel=document.getElementById(selId);if(!sel)return;var cur=sel.value;sel.innerHTML='<option value="">📌 ทุกวิชา</option>';subjects.forEach(s=>{var o=document.createElement('option');o.value=s;o.textContent=s;sel.appendChild(o);});sel.value=subjects.includes(cur)?cur:'';}fill('hwFilterSubject',hwSubjects);fill('examFilterSubject',exSubjects); }
+window.applyHwFilter=function(){var subj=(document.getElementById('hwFilterSubject')||{}).value||'',lvl=(document.getElementById('hwFilterLevel')||{}).value||'',sort=(document.getElementById('hwSort')||{}).value||'date_asc',list=document.getElementById('hwListPage');if(!list)return;var items=_allHw.filter(d=>(subj?d.subject===subj:true)&&(lvl?d.level===lvl:true));if(sort==='level')items.sort((a,b)=>levelOrder(a.level)-levelOrder(b.level));else items=sortByDate(items,sort==='date_asc'?'asc':'desc');list.innerHTML='';if(!items.length)list.innerHTML='<div class="empty-state">📭 ไม่พบรายการที่ตรงกัน</div>';else items.forEach(d=>list.appendChild(buildHwEl(d.id,d))); };
+window.applyExamFilter=function(){var subj=(document.getElementById('examFilterSubject')||{}).value||'',lvl=(document.getElementById('examFilterLevel')||{}).value||'',sort=(document.getElementById('examSort')||{}).value||'date_asc',list=document.getElementById('examListPage');if(!list)return;var items=_allExams.filter(d=>(subj?d.subject===subj:true)&&(lvl?d.level===lvl:true));items=sortByDate(items,sort==='date_asc'?'asc':'desc');list.innerHTML='';if(!items.length)list.innerHTML='<div class="empty-state">📭 ไม่พบรายการที่ตรงกัน</div>';else items.forEach(d=>list.appendChild(buildExamEl(d.id,d))); };
+window.applyEventFilter=function(){var sort=(document.getElementById('eventSort')||{}).value||'date_asc',list=document.getElementById('eventListPage');if(!list)return;var items=sortByDate(_allEvents,sort==='date_asc'?'asc':'desc');list.innerHTML='';if(!items.length)list.innerHTML='<div class="empty-state">📭 ยังไม่มีกิจกรรม</div>';else items.forEach(d=>list.appendChild(buildEventEl(d.id,d))); };
+window.exportCSV=function(type){var rows,filename;if(type==='hw'){rows=[['ชื่อการบ้าน','วิชา','วันกำหนดส่ง','ระดับ'],..._allHw.map(d=>[d.name,d.subject||'',d.date,{urgent:'ด่วน',warn:'ใกล้ครบ',ok:'ปกติ'}[d.level]||''])];filename='การบ้าน.csv';}else if(type==='exam'){rows=[['ชื่อการสอบ','วิชา','วันสอบ','ห้องสอบ','ระดับ'],..._allExams.map(d=>[d.name,d.subject||'',d.date,d.room||'',{red:'เร่งด่วน',yellow:'ปกติ'}[d.level]||''])];filename='ข้อสอบ.csv';}else{rows=[['ชื่อกิจกรรม','รายละเอียด','วันที่'],..._allEvents.map(d=>[d.name,d.sub||'',d.date])];filename='กิจกรรม.csv';}var bom='\uFEFF',csv=bom+rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=filename;a.click();showToast('📥 Export แล้ว: '+filename); };
+window.toggleMobileMenu=function(){document.getElementById('mobileMenu').classList.toggle('open');};
+window.closeMobileMenu=function(){document.getElementById('mobileMenu').classList.remove('open');};
+document.addEventListener('click',function(e){var menu=document.getElementById('mobileMenu'),btn=document.getElementById('hamburger');if(menu&&btn&&!menu.contains(e.target)&&!btn.contains(e.target))menu.classList.remove('open');});
+
+window.handleSearch=function(q){var clear=document.getElementById('searchClear');clear.style.display=q?'block':'none';if(!q.trim()){renderAllLists();return;}var kw=q.trim().toLowerCase();function highlight(text){var idx=text.toLowerCase().indexOf(kw);if(idx===-1)return document.createTextNode(text);var span=document.createElement('span');span.appendChild(document.createTextNode(text.slice(0,idx)));var mark=document.createElement('mark');mark.className='search-highlight';mark.textContent=text.slice(idx,idx+kw.length);span.appendChild(mark);span.appendChild(document.createTextNode(text.slice(idx+kw.length)));return span;}function filterAndRender(items,listId,buildFn){var list=document.getElementById(listId);list.innerHTML='';var matched=items.filter(i=>i.name&&i.name.toLowerCase().includes(kw));if(!matched.length){list.innerHTML='<div class="no-result">🔍 ไม่พบ "'+esc(q)+'"</div>';return;}matched.forEach(item=>{var el=buildFn(item.id,item);var nameEl=el.querySelector('.hw-name,.exam-name,.event-name');if(nameEl){nameEl.innerHTML='';nameEl.appendChild(highlight(item.name));}list.appendChild(el);});}filterAndRender(_allHw,'hwList',buildHwEl);filterAndRender(_allExams,'examList',buildExamEl);filterAndRender(_allEvents,'eventList',buildEventEl); };
+window.clearSearch=function(){var inp=document.getElementById('searchInput');inp.value='';document.getElementById('searchClear').style.display='none';renderAllLists();inp.focus();};
+function renderAllLists(){var hwList=document.getElementById('hwList');hwList.innerHTML='';if(!_allHw.length){hwList.innerHTML='<div class="empty-state">📭 ยังไม่มีการบ้าน</div>';}else _allHw.forEach(i=>hwList.appendChild(buildHwEl(i.id,i)));var examList=document.getElementById('examList');examList.innerHTML='';if(!_allExams.length){examList.innerHTML='<div class="empty-state">📭 ยังไม่มีข้อสอบ</div>';}else _allExams.forEach(i=>examList.appendChild(buildExamEl(i.id,i)));var eventList=document.getElementById('eventList');eventList.innerHTML='';if(!_allEvents.length){eventList.innerHTML='<div class="empty-state">📭 ยังไม่มีกิจกรรม</div>';}else _allEvents.forEach(i=>eventList.appendChild(buildEventEl(i.id,i)));}
+
+async function requestNotifPermission(){ if(!('Notification' in window))return; if(Notification.permission==='default') await Notification.requestPermission(); }
+function checkAndNotify(){ if(!('Notification' in window)||Notification.permission!=='granted')return;var now=new Date(),notified=JSON.parse(localStorage.getItem('cls_notified')||'{}');function maybeNotify(items,type){items.forEach(item=>{if(!item.date)return;var target=parseThaiDate(item.date);if(!target)return;var diff=target-now,days=Math.floor(diff/86400000),key=type+'_'+item.id;if(days>=0&&days<=2&&!notified[key]){var label={hw:'การบ้าน',exam:'ข้อสอบ',event:'กิจกรรม'}[type];new Notification('⏰ แจ้งเตือน '+label,{body:item.name+(days===0?' — วันนี้!':' — อีก '+days+' วัน'),icon:'https://cdn.jsdelivr.net/gh/twitter/twemoji@latest/assets/72x72/1f4da.png'});notified[key]=true;localStorage.setItem('cls_notified',JSON.stringify(notified));}})} maybeNotify(_allHw,'hw');maybeNotify(_allExams,'exam');maybeNotify(_allEvents,'event'); }
+window.toggleNotifPermission=async function(){ if(!('Notification' in window)){showToast('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน','error');return;}if(Notification.permission==='granted'){showToast('🔔 เปิดการแจ้งเตือนอยู่แล้ว — จะแจ้งเมื่องานเหลือ ≤ 2 วัน');}else if(Notification.permission==='denied'){showToast('❌ การแจ้งเตือนถูกบล็อก กรุณาเปิดในการตั้งค่าเบราว์เซอร์','error');}else{var result=await Notification.requestPermission();if(result==='granted'){showToast('✅ เปิดการแจ้งเตือนสำเร็จ!');updateNotifBtn();checkAndNotify();}else{showToast('❌ ไม่ได้รับอนุญาตแจ้งเตือน','error');}} };
+function updateNotifBtn(){ var btn=document.getElementById('notifBtn');if(!btn)return;if(!('Notification' in window)){btn.style.opacity='0.4';return;}btn.textContent=Notification.permission==='granted'?'🔔':'🔕';btn.title=Notification.permission==='granted'?'แจ้งเตือน: เปิดอยู่':'แจ้งเตือน: ปิดอยู่ (คลิกเพื่อเปิด)'; }
+requestNotifPermission().then(()=>{updateNotifBtn();});
+setTimeout(()=>{checkAndNotify();updateNotifBtn();},3000);
+setInterval(checkAndNotify,60000*30);
+
+// ══════════ TIMETABLE ══════════
+var _ttData={},_ttSettings={periods:7,times:[]},_ttEditKey=null;
+var _ttColors=['#3b82f6','#ef4444','#22c55e','#f59e0b','#8b5cf6','#06b6d4','#f97316','#ec4899','#14b8a6','#84cc16','#6366f1','#e11d48'];
+var _ttSubjectColorMap={};
+const TT_DAYS=['จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์','อาทิตย์'];
+const TT_DAY_JS=[1,2,3,4,5,6,0];
+
+async function loadTimetable(){ try{var snap=await getDoc(doc(db,'timetable','data'));if(snap.exists()){var d=snap.data();_ttData=d.slots||{};_ttSettings=d.settings||{periods:7,times:[]};if(!_ttSettings.times)_ttSettings.times=[];rebuildColorMap();}}catch(e){console.warn('loadTimetable error',e);} }
+async function saveTimetable(){ try{await setDoc(doc(db,'timetable','data'),{slots:_ttData,settings:_ttSettings,updatedAt:serverTimestamp()});}catch(e){showToast('❌ บันทึกไม่สำเร็จ','error');} }
+function rebuildColorMap(){ _ttSubjectColorMap={};var colorIdx=0;Object.values(_ttData).forEach(cell=>{if(cell&&cell.subject&&!_ttSubjectColorMap[cell.subject]){_ttSubjectColorMap[cell.subject]=cell.color||_ttColors[colorIdx%_ttColors.length];colorIdx++;}}); }
+function renderTimetable(){
+  var u=getCurrentUser(),canEdit=u&&(canManage(u.role)||isDeptRole(u.role));
+  document.getElementById('ttAddBtn').style.display=canEdit?'':'none';document.getElementById('ttSettingsBtn').style.display=canEdit?'':'none';
+  var numDays=5,numPeriods=_ttSettings.periods||7,times=_ttSettings.times||[];
+  var head=document.getElementById('ttHead');head.innerHTML='';var hRow=document.createElement('tr');var thPeriod=document.createElement('th');thPeriod.textContent='คาบ / วัน';thPeriod.style.minWidth='70px';hRow.appendChild(thPeriod);
+  for(var d=0;d<numDays;d++){var th=document.createElement('th');th.textContent=TT_DAYS[d];hRow.appendChild(th);}head.appendChild(hRow);
+  var body=document.getElementById('ttBody');body.innerHTML='';
+  var now=new Date(),todayDayJS=now.getDay(),nowMinutes=now.getHours()*60+now.getMinutes(),currentNowKey=null;
+  if(times&&times.length){for(var p=0;p<numPeriods;p++){var t=times[p];if(!t||!t.start||!t.end)continue;var startM=timeToMinutes(t.start),endM=timeToMinutes(t.end);for(var d2=0;d2<numDays;d2++){if(TT_DAY_JS[d2]===todayDayJS&&nowMinutes>=startM&&nowMinutes<endM)currentNowKey=d2+'_'+p;}}}
+  var hasAny=Object.keys(_ttData).some(k=>_ttData[k]);
+  if(!hasAny&&!canEdit){body.innerHTML='<tr><td colspan="'+(numDays+1)+'" style="padding:0;border:none;"><div class="tt-empty-state"><div class="tt-empty-icon">🗓️</div><div class="tt-empty-text">ยังไม่มีตารางเรียน</div><div class="tt-empty-sub">รอให้ admin เพิ่มข้อมูล</div></div></td></tr>';renderTTLegend();return;}
+  for(var p=0;p<numPeriods;p++){var t=times[p]||{},timeStr=(t.start&&t.end)?t.start+'–'+t.end:'คาบ '+(p+1),tr=document.createElement('tr'),isNowPeriod=false;
+    var tdLabel=document.createElement('td');tdLabel.className='tt-period-col';tdLabel.innerHTML='<div style="font-size:13px;font-weight:800;color:var(--text-dark);">'+(p+1)+'</div><div style="font-size:10px;color:var(--text-muted);margin-top:2px;">'+esc(timeStr)+'</div>';tr.appendChild(tdLabel);
+    for(var d=0;d<numDays;d++){var key=d+'_'+p,cell=_ttData[key],td=document.createElement('td');if(key===currentNowKey)isNowPeriod=true;
+      if(cell&&cell.subject){var color=cell.color||_ttSubjectColorMap[cell.subject]||_ttColors[0],inner=document.createElement('div');inner.className='tt-cell-inner'+(key===currentNowKey?' tt-cell-now':'');inner.style.background=color;var subjEl=document.createElement('div');subjEl.className='tt-subject';subjEl.textContent=cell.subject;inner.appendChild(subjEl);if(cell.teacher){var teachEl=document.createElement('div');teachEl.className='tt-teacher';teachEl.innerHTML='👤 '+esc(cell.teacher);inner.appendChild(teachEl);}if(cell.room){var roomEl=document.createElement('div');roomEl.className='tt-room';roomEl.innerHTML='🚪 '+esc(cell.room);inner.appendChild(roomEl);}if(key===currentNowKey){var badge=document.createElement('div');badge.className='tt-now-badge';badge.textContent='NOW';inner.appendChild(badge);}if(canEdit){inner.onclick=(function(k,c){return function(){window.openTTEdit(k,c);};})(key,cell);inner.title='คลิกเพื่อแก้ไข';}td.appendChild(inner);}
+      else{if(canEdit){var empty=document.createElement('div');empty.className='tt-cell-empty';empty.textContent='+';empty.title='คลิกเพื่อเพิ่มวิชา';empty.onclick=(function(k){return function(){window.openTTAddSlot(k);};})(key);td.appendChild(empty);}}
+      tr.appendChild(td);}
+    if(isNowPeriod)tr.className='tt-period-row-now';body.appendChild(tr);}
+  renderTTLegend();updateTTNowInfo(currentNowKey);
+}
+function updateTTNowInfo(nowKey){var el=document.getElementById('ttNowInfo');if(!el)return;if(nowKey&&_ttData[nowKey]&&_ttData[nowKey].subject){var parts=nowKey.split('_');el.innerHTML='🟠 <strong>ตอนนี้: คาบ'+(parseInt(parts[1])+1)+' '+esc(_ttData[nowKey].subject)+'</strong>';el.style.display='';}else{el.style.display='none';}}
+function renderTTLegend(){var legend=document.getElementById('ttLegend');legend.innerHTML='';var seen={};Object.values(_ttData).forEach(cell=>{if(cell&&cell.subject&&!seen[cell.subject]){seen[cell.subject]=true;var color=cell.color||_ttSubjectColorMap[cell.subject]||'#888',item=document.createElement('div');item.className='tt-legend-item';item.innerHTML='<div class="tt-legend-dot" style="background:'+color+'"></div>'+esc(cell.subject);legend.appendChild(item);}});}
+function timeToMinutes(str){if(!str)return 0;var parts=str.split(':');return parseInt(parts[0]||0)*60+parseInt(parts[1]||0);}
+window.openTTSettings=function(){document.getElementById('ttPeriodCount').value=_ttSettings.periods||7;renderPeriodTimeList();window.openModal('ttSettingsModal');};
+function renderPeriodTimeList(){var n=parseInt(document.getElementById('ttPeriodCount').value)||7,times=_ttSettings.times||[],list=document.getElementById('ttPeriodTimeList');list.innerHTML='';for(var i=0;i<n;i++){var t=times[i]||{},row=document.createElement('div');row.style.cssText='display:flex;align-items:center;gap:8px;';row.innerHTML='<span style="font-size:12px;font-weight:700;color:var(--text-muted);min-width:44px;">คาบ '+(i+1)+'</span><input class="field-input" id="tt_s_'+i+'" type="time" value="'+(t.start||'')+'" style="flex:1;padding:7px 10px;font-size:13px;"><span style="color:var(--text-muted);font-size:12px;">–</span><input class="field-input" id="tt_e_'+i+'" type="time" value="'+(t.end||'')+'" style="flex:1;padding:7px 10px;font-size:13px;">';list.appendChild(row);}}
+window.saveTTSettings=async function(){var u=getCurrentUser();if(!u||(! canManage(u.role)&&!isDeptRole(u.role)))return;var n=parseInt(document.getElementById('ttPeriodCount').value)||7,times=[];for(var i=0;i<n;i++){var s=document.getElementById('tt_s_'+i),e=document.getElementById('tt_e_'+i);times.push({start:s?s.value:'',end:e?e.value:''});}_ttSettings={periods:n,times};await saveTimetable();await addLogFirestore('edit','ตั้งค่าตารางเรียน: '+n+' คาบ');window.closeModal('ttSettingsModal');renderTimetable();showToast('✅ บันทึกการตั้งค่าแล้ว');};
+window.openTTAdd=function(){_ttEditKey=null;document.getElementById('ttModalIcon').textContent='📚';document.getElementById('ttModalTitle').textContent='เพิ่มวิชาในตาราง';document.getElementById('ttModalSub').textContent='';buildTTForm(null,{});window.openModal('ttModal');};
+window.openTTAddSlot=function(key){_ttEditKey=key;var parts=key.split('_'),dayName=TT_DAYS[parseInt(parts[0])],period=parseInt(parts[1])+1;document.getElementById('ttModalIcon').textContent='📚';document.getElementById('ttModalTitle').textContent='เพิ่มวิชา';document.getElementById('ttModalSub').textContent='วัน'+dayName+' · คาบ '+period;buildTTForm(key,{});window.openModal('ttModal');};
+window.openTTEdit=function(key,cell){_ttEditKey=key;var parts=key.split('_'),dayName=TT_DAYS[parseInt(parts[0])],period=parseInt(parts[1])+1;document.getElementById('ttModalIcon').textContent='✏️';document.getElementById('ttModalTitle').textContent='แก้ไขวิชา';document.getElementById('ttModalSub').textContent='วัน'+dayName+' · คาบ '+period;buildTTForm(key,cell||{});window.openModal('ttModal');};
+function buildTTForm(key,data){var numDays=5,numPeriods=_ttSettings.periods||7,autoColor=data.color||'';if(!autoColor&&data.subject&&_ttSubjectColorMap[data.subject])autoColor=_ttSubjectColorMap[data.subject];if(!autoColor)autoColor=_ttColors[Object.keys(_ttSubjectColorMap).length%_ttColors.length];var swatches=_ttColors.map((c,i)=>'<div onclick="document.getElementById(\'tt_color\').value=\''+c+'\';document.querySelectorAll(\'.tt-swatch\').forEach(s=>s.style.outline=\'none\');this.style.outline=\'3px solid var(--orange)\'" class="tt-swatch" style="width:22px;height:22px;border-radius:6px;background:'+c+';cursor:pointer;flex-shrink:0;outline:'+(data.color===c?'3px solid var(--orange)':'none')+';transition:outline 0.1s;"></div>').join('');var slotSelector='';if(!key){var dayOptions=TT_DAYS.slice(0,numDays).map((d,i)=>'<option value="'+i+'">'+d+'</option>').join(''),periodOptions=Array.from({length:numPeriods},(_,i)=>'<option value="'+i+'">คาบ '+(i+1)+'</option>').join('');slotSelector='<div class="tt-settings-grid"><div class="field-group"><label class="field-label">วัน</label><select class="field-select" id="tt_day">'+dayOptions+'</select></div><div class="field-group"><label class="field-label">คาบ</label><select class="field-select" id="tt_period">'+periodOptions+'</select></div></div>';}
+  var b=document.getElementById('ttModalBody');b.innerHTML=slotSelector+'<div class="field-group"><label class="field-label">ชื่อวิชา *</label><input class="field-input" id="tt_subject" value="'+esc(data.subject||'')+'" placeholder="เช่น คณิตศาสตร์, ฟิสิกส์" list="tt_subject_list"><datalist id="tt_subject_list"></datalist></div><div class="field-group"><label class="field-label">ชื่อครู</label><input class="field-input" id="tt_teacher" value="'+esc(data.teacher||'')+'" placeholder="เช่น อ.สมศรี"></div><div class="field-group"><label class="field-label">ห้องเรียน</label><input class="field-input" id="tt_room" value="'+esc(data.room||'')+'" placeholder="เช่น ห้อง 302"></div><div class="field-group"><label class="field-label">สีประจำวิชา</label><div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px;">'+swatches+'</div><input type="color" id="tt_color" value="'+(autoColor||'#3b82f6')+'" style="width:36px;height:28px;border:none;border-radius:6px;cursor:pointer;padding:0;"></div>'+(key?'<button class="modal-btn danger" onclick="window.deleteTTSlot()" style="margin-bottom:-6px;">🗑️ ลบออกจากตาราง</button>':'')+'<button class="modal-btn primary" onclick="window.submitTTSlot()">💾 บันทึก</button>';
+  var dl=document.getElementById('tt_subject_list');var subjects=[...new Set(Object.values(_ttData).filter(c=>c&&c.subject).map(c=>c.subject))];subjects.forEach(s=>{var opt=document.createElement('option');opt.value=s;dl.appendChild(opt);});
+  var subjInput=document.getElementById('tt_subject');subjInput.addEventListener('input',function(){var v=this.value.trim();if(_ttSubjectColorMap[v])document.getElementById('tt_color').value=_ttSubjectColorMap[v];});}
+window.submitTTSlot=async function(){var u=getCurrentUser();if(!u||(!canManage(u.role)&&!isDeptRole(u.role)))return showToast('⛔ ไม่มีสิทธิ์','error');var subject=document.getElementById('tt_subject').value.trim();if(!subject)return showToast('⚠️ กรุณากรอกชื่อวิชา','error');var key=_ttEditKey;if(!key){var dayEl=document.getElementById('tt_day'),perEl=document.getElementById('tt_period');if(!dayEl||!perEl)return;key=dayEl.value+'_'+perEl.value;}var teacher=document.getElementById('tt_teacher').value.trim(),room=document.getElementById('tt_room').value.trim(),color=document.getElementById('tt_color').value;if(_ttSubjectColorMap[subject]&&!_ttEditKey)color=_ttSubjectColorMap[subject];_ttData[key]={subject,teacher,room,color};rebuildColorMap();await saveTimetable();await addLogFirestore('edit','ตารางเรียน: '+subject+' ('+key+')');window.closeModal('ttModal');renderTimetable();showToast('✅ บันทึกแล้ว');};
+window.deleteTTSlot=async function(){var u=getCurrentUser();if(!u||(!canManage(u.role)&&!isDeptRole(u.role)))return;if(!_ttEditKey)return;delete _ttData[_ttEditKey];rebuildColorMap();await saveTimetable();await addLogFirestore('delete','ตารางเรียน: slot '+_ttEditKey);window.closeModal('ttModal');renderTimetable();showToast('🗑️ ลบแล้ว');};
+// PERFORMANCE: re-render timetable ทุก 60 วิ เฉพาะตอน tab active
+setInterval(function(){ if(!window._tabHidden&&document.getElementById('timetablePage').style.display!=='none') renderTimetable(); },60000);
+(function(){var sel=document.getElementById('ttPeriodCount');if(sel)sel.addEventListener('change',renderPeriodTimeList);})();
+
+// ══════════ PERSONNEL ══════════
+var _allPersonnel=[],_personnelEditId='';
+var PERSON_COLORS=['#f97316','#ef4444','#3b82f6','#22c55e','#8b5cf6','#f59e0b','#06b6d4','#ec4899','#14b8a6','#6366f1'];
+function personColor(name){var h=0;for(var i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))%PERSON_COLORS.length;return PERSON_COLORS[Math.abs(h)];}
+function startPersonnelListener(){
+  onSnapshot(query(collection(db,'personnel'),orderBy('createdAt','asc')),snap=>{_allPersonnel=[];snap.forEach(d=>_allPersonnel.push({id:d.id,...d.data()}));renderPersonnelPage();refreshDeptFilter();});
+}
+function refreshDeptFilter(){var sel=document.getElementById('personnelFilterDept');if(!sel)return;var cur=sel.value,depts=[...new Set(_allPersonnel.map(p=>p.dept).filter(Boolean))].sort();sel.innerHTML='<option value="">🏫 ทุกแผนก</option>';depts.forEach(d=>{var o=document.createElement('option');o.value=d;o.textContent=d;sel.appendChild(o);});if(depts.includes(cur))sel.value=cur;}
+function renderPersonnelPage(){
+  var grid=document.getElementById('personnelGrid');if(!grid)return;
+  var search=(document.getElementById('personnelSearch')||{}).value||'',dept=(document.getElementById('personnelFilterDept')||{}).value||'';
+  var u=getCurrentUser(),canEdit=u&&canManage(u.role);
+  var filtered=_allPersonnel.filter(p=>{var matchS=!search||(p.name||'').includes(search)||(p.subject||'').includes(search)||(p.dept||'').includes(search);var matchD=!dept||(p.dept||'')===dept;return matchS&&matchD;});
+  if(!filtered.length){grid.innerHTML='<div class="personnel-empty" style="grid-column:1/-1;"><div class="personnel-empty-icon">👥</div><div style="font-size:16px;font-weight:600;color:var(--text-dark);margin-bottom:8px;">ยังไม่มีบุคลากร</div><div style="font-size:13px;">Admin สามารถเพิ่มบุคลากรได้</div></div>';return;}
+  grid.innerHTML='';
+  filtered.forEach(function(p){
+    var initials=(p.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(),color=personColor(p.name||'');
+    var deptBg={ครู:'rgba(59,130,246,0.12)',อาจารย์:'rgba(139,92,246,0.12)',เจ้าหน้าที่:'rgba(20,184,166,0.12)'}[p.role]||'rgba(100,116,139,0.12)',deptColor={ครู:'#1d4ed8',อาจารย์:'#6d28d9',เจ้าหน้าที่:'#0f766e'}[p.role]||'#475569';
+    // avatar: รูปหรือ initials
+    var avatarHTML=p.photoBase64?'<img class="personnel-avatar-img" src="'+p.photoBase64+'" alt="'+esc(p.name)+'">':'<div class="personnel-avatar" style="background:'+color+'">'+initials+'</div>';
+    var card=document.createElement('div');card.className='personnel-card';
+    card.innerHTML=avatarHTML+'<div class="personnel-name">'+esc(p.name)+'</div>'+(p.role?'<span class="personnel-role-tag" style="background:'+deptBg+';color:'+deptColor+'">'+esc(p.role)+'</span>':'')+(p.dept?'<div class="personnel-info-row"><span class="personnel-info-icon">🏫</span>'+esc(p.dept)+'</div>':'')+(p.subject?'<div class="personnel-info-row"><span class="personnel-info-icon">📚</span>'+esc(p.subject)+'</div>':'')+(p.phone?'<div class="personnel-info-row"><span class="personnel-info-icon">📞</span><a href="tel:'+esc(p.phone)+'" style="color:var(--blue-accent);text-decoration:none;" onclick="event.stopPropagation()">'+esc(p.phone)+'</a></div>':'')+(p.email?'<div class="personnel-info-row"><span class="personnel-info-icon">✉️</span><a href="mailto:'+esc(p.email)+'" style="color:var(--blue-accent);text-decoration:none;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;max-width:180px;" onclick="event.stopPropagation()">'+esc(p.email)+'</a></div>':'')+(p.line?'<div class="personnel-info-row"><span class="personnel-info-icon">💬</span>'+esc(p.line)+'</div>':'')+(canEdit?'<div class="personnel-card-actions"><button class="personnel-edit-btn" onclick="event.stopPropagation();window.openPersonnelModal(\''+p.id+'\')">✏️</button><button class="personnel-del-btn" onclick="event.stopPropagation();window.deletePersonnel(\''+p.id+'\',\''+esc(p.name)+'\')">🗑️</button></div>':'');
+    grid.appendChild(card);
+  });
+}
+window.filterPersonnel=function(){renderPersonnelPage();};
+window.openPersonnelModal=function(editId){
+  _personnelEditId=editId||'';var data=editId?(_allPersonnel.find(p=>p.id===editId)||{}):{};
+  document.getElementById('personnelModalIcon').textContent=editId?'✏️':'👤';document.getElementById('personnelModalTitle').textContent=editId?'แก้ไขบุคลากร':'เพิ่มบุคลากร';
+  var depts=[...new Set([..._allPersonnel.map(p=>p.dept).filter(Boolean),'วิทยาศาสตร์','คณิตศาสตร์','ภาษาไทย','ภาษาอังกฤษ','สังคมศึกษา','พลศึกษา','ศิลปะ','คอมพิวเตอร์','กิจกรรม'])].sort();
+  var deptOpts=depts.map(d=>'<option value="'+esc(d)+'"'+(d===(data.dept||'')?' selected':'')+'>'+esc(d)+'</option>').join('');
+  var initials=(data.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?',color=personColor(data.name||'New');
+  var avatarInner=data.photoBase64?'<img class="avatar-preview" id="pf_photo_preview" src="'+data.photoBase64+'" alt="photo">':'<div class="avatar-placeholder" id="pf_photo_preview" style="background:linear-gradient(135deg,'+color+',var(--gold))">'+initials+'</div>';
+  document.getElementById('personnelModalBody').innerHTML=
+    '<div style="text-align:center;margin-bottom:4px;"><div class="avatar-upload-wrap" onclick="document.getElementById(\'pf_photo_input\').click()" title="เปลี่ยนรูปโปรไฟล์">'+avatarInner+'<div class="avatar-upload-overlay">📷</div><button class="avatar-remove-btn'+(data.photoBase64?' visible':'')+'" id="pf_remove_btn" onclick="event.stopPropagation();window._removePersonnelPhoto()" title="ลบรูป">✕</button></div><input type="file" id="pf_photo_input" accept="image/*"><div class="avatar-upload-hint">คลิกที่รูปเพื่อเปลี่ยน · รองรับ JPG, PNG (สูงสุด 2MB)</div></div>'+
+    '<div class="field-group"><label class="field-label">ชื่อ-นามสกุล *</label><input class="field-input" id="pf_name" value="'+esc(data.name||'')+'" placeholder="เช่น นายสมชาย ใจดี"></div>'+
+    '<div class="field-group"><label class="field-label">ตำแหน่ง</label><select class="field-select" id="pf_role"><option value="">— เลือกตำแหน่ง —</option><option value="ครู"'+(data.role==='ครู'?' selected':'')+'>ครู</option><option value="อาจารย์"'+(data.role==='อาจารย์'?' selected':'')+'>อาจารย์</option><option value="เจ้าหน้าที่"'+(data.role==='เจ้าหน้าที่'?' selected':'')+'>เจ้าหน้าที่</option></select></div>'+
+    '<div class="field-group"><label class="field-label">แผนก / กลุ่มสาระ</label><select class="field-select" id="pf_dept"><option value="">— เลือกแผนก —</option>'+deptOpts+'<option value="__custom__">✏️ พิมพ์เอง...</option></select><input class="field-input" id="pf_dept_custom" placeholder="พิมพ์ชื่อแผนก..." style="display:none;margin-top:8px;" value="'+esc(data.dept||'')+'"></div>'+
+    '<div class="field-group"><label class="field-label">วิชาที่สอน</label><input class="field-input" id="pf_subject" value="'+esc(data.subject||'')+'" placeholder="เช่น คณิตศาสตร์, ฟิสิกส์"></div>'+
+    '<div class="field-group"><label class="field-label">เบอร์โทรศัพท์</label><input class="field-input" id="pf_phone" type="tel" value="'+esc(data.phone||'')+'" placeholder="เช่น 08x-xxx-xxxx"></div>'+
+    '<div class="field-group"><label class="field-label">อีเมล</label><input class="field-input" id="pf_email" type="email" value="'+esc(data.email||'')+'" placeholder="เช่น teacher@school.ac.th"></div>'+
+    '<div class="field-group"><label class="field-label">LINE ID</label><input class="field-input" id="pf_line" value="'+esc(data.line||'')+'" placeholder="เช่น teacher.id"></div>'+
+    '<button class="modal-btn primary" onclick="window.submitPersonnel()">'+(editId?'💾 บันทึก':'＋ เพิ่มบุคลากร')+'</button>';
+  window._personnelCurrentPhoto=data.photoBase64||null;
+  setTimeout(function(){
+    var inp=document.getElementById('pf_photo_input');if(inp)inp.addEventListener('change',window._onPersonnelPhotoChange);
+    var sel=document.getElementById('pf_dept');if(sel){sel.addEventListener('change',function(){var ci=document.getElementById('pf_dept_custom');if(ci)ci.style.display=sel.value==='__custom__'?'':'none';});if(data.dept&&!depts.includes(data.dept)){sel.value='__custom__';var ci=document.getElementById('pf_dept_custom');if(ci){ci.style.display='';ci.value=data.dept;}}}
+    var nameInp=document.getElementById('pf_name');if(nameInp)nameInp.addEventListener('input',function(){if(!window._personnelCurrentPhoto){var preview=document.getElementById('pf_photo_preview');if(preview&&preview.tagName!=='IMG'){var newInit=(this.value||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?';preview.textContent=newInit;}}});
+  },30);
+  window.openModal('personnelModal');
+};
+window._onPersonnelPhotoChange=function(e){
+  var file=e.target.files[0];if(!file)return;if(file.size>2*1024*1024){showToast('⚠️ รูปใหญ่เกิน 2MB','error');return;}
+  var reader=new FileReader();reader.onload=function(ev){var img=new Image();img.onload=function(){var maxSize=400,w=img.width,h=img.height;if(w>maxSize||h>maxSize){var ratio=Math.min(maxSize/w,maxSize/h);w=Math.round(w*ratio);h=Math.round(h*ratio);}var canvas=document.createElement('canvas');canvas.width=w;canvas.height=h;canvas.getContext('2d').drawImage(img,0,0,w,h);var b64=canvas.toDataURL('image/jpeg',0.75);window._personnelCurrentPhoto=b64;var previewEl=document.getElementById('pf_photo_preview');if(previewEl&&previewEl.tagName==='IMG'){previewEl.src=b64;}else if(previewEl){var imgEl=document.createElement('img');imgEl.className='avatar-preview';imgEl.id='pf_photo_preview';imgEl.alt='photo';imgEl.src=b64;previewEl.parentNode.replaceChild(imgEl,previewEl);}var removeBtn=document.getElementById('pf_remove_btn');if(removeBtn)removeBtn.classList.add('visible');showToast('🖼️ เลือกรูปแล้ว กด "บันทึก" เพื่อยืนยัน');};img.src=ev.target.result;};reader.readAsDataURL(file);
+};
+window._removePersonnelPhoto=function(){window._personnelCurrentPhoto=null;var nameInp=document.getElementById('pf_name'),initials=((nameInp?nameInp.value:'')||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()||'?',color=personColor((nameInp?nameInp.value:'')||'New');var previewEl=document.getElementById('pf_photo_preview');if(previewEl){var placeholder=document.createElement('div');placeholder.className='avatar-placeholder';placeholder.id='pf_photo_preview';placeholder.style.background='linear-gradient(135deg,'+color+',var(--gold))';placeholder.textContent=initials;previewEl.parentNode.replaceChild(placeholder,previewEl);}var removeBtn=document.getElementById('pf_remove_btn');if(removeBtn)removeBtn.classList.remove('visible');showToast('🗑️ ลบรูปแล้ว');};
+window.submitPersonnel=async function(){
+  var u=getCurrentUser();if(!u||!canManage(u.role))return showToast('⛔ ไม่มีสิทธิ์','error');
+  var name=(document.getElementById('pf_name')||{}).value?.trim()||'';if(!name)return showToast('⚠️ กรุณากรอกชื่อ','error');
+  var deptSel=document.getElementById('pf_dept'),dept=deptSel&&deptSel.value==='__custom__'?((document.getElementById('pf_dept_custom')||{}).value?.trim()||''):(deptSel?.value||'');
+  var data={name,role:(document.getElementById('pf_role')||{}).value||'',dept,subject:(document.getElementById('pf_subject')||{}).value?.trim()||'',phone:(document.getElementById('pf_phone')||{}).value?.trim()||'',email:(document.getElementById('pf_email')||{}).value?.trim()||'',line:(document.getElementById('pf_line')||{}).value?.trim()||'',photoBase64:window._personnelCurrentPhoto||null};
+  try{if(_personnelEditId){await updateDoc(doc(db,'personnel',_personnelEditId),data);showToast('✅ แก้ไขบุคลากรสำเร็จ');}else{data.createdAt=serverTimestamp();await addDoc(collection(db,'personnel'),data);showToast('✅ เพิ่มบุคลากรสำเร็จ');}window.closeModal('personnelModal');}catch(e){showToast('❌ ไม่สำเร็จ: '+e.message,'error');}
+};
+window.deletePersonnel=async function(id,name){if(!confirm('ลบ "'+name+'" ออกจากรายชื่อบุคลากร?\nไม่สามารถย้อนกลับได้'))return;var u=getCurrentUser();if(!u||!canManage(u.role))return showToast('⛔ ไม่มีสิทธิ์','error');try{await deleteDoc(doc(db,'personnel',id));showToast('🗑️ ลบบุคลากรแล้ว');}catch(e){showToast('❌ ลบไม่สำเร็จ','error');} };
+
+// ── INIT: โหลดเฉพาะ dashboard data ก่อน (Lazy load ที่เหลือ) ──
+startRealtimeListeners();
+updateUI();
+</script>
+</body>
+</html>
